@@ -7,9 +7,9 @@
 #include "student.h"
 #include "teacher.h"
 
-std::vector<std::array<double, 3> > read_polynoms_from_file() {
+std::vector<std::array<double, 3> > read_polynoms_from_file(const std::string& filename) {
     std::vector<std::array<double, 3> > to_return{};
-    std::ifstream input("input.txt");
+    std::ifstream input(filename);
 
     if (!input.is_open()) {
         std::cerr << "Error: Could not open input file" << std::endl;
@@ -37,7 +37,7 @@ int main() {
 
     Teacher teacher;
 
-    auto tasks = read_polynoms_from_file();
+    auto tasks = read_polynoms_from_file("input.txt");
 
     // solve equations and send them to teacher
     for (const auto &student: students) {
