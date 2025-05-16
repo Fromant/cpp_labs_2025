@@ -7,20 +7,20 @@ constexpr int SCREEN_HEIGHT = 600;
 constexpr float BASE_PADDLE_SPEED = 200.0f;
 constexpr int BASE_PADDLE_WIDTH = 100;
 constexpr int BASE_PADDLE_HEIGHT = 20;
-constexpr float BASE_BALL_SPEED = 100.0f;
+constexpr float BASE_BALL_SPEED = 200.0f;
 constexpr int LIVES = 1;
 constexpr Uint64 STICKY_PADDLE_DURATION = 10000; //10s
 constexpr Uint64 SAFETY_NET_DURATION = 10000; //10s
 
 Game::Game() : window(nullptr), renderer(nullptr), isRunning(true), needsReset(false),
-               score(0), lives(LIVES), stickyPaddle(false), safetyNetActive(false),
+               score(0), lives(LIVES), stickyPaddle(true), safetyNetActive(false),
                paddleSpeedMultiplier(1.0f), ballSpeedMultiplier(1.0f) {}
 
 void Game::ResetGame() {
     // Reset game state
     lives = LIVES;
     score = 0;
-    stickyPaddle = false;
+    stickyPaddle = true;
     safetyNetActive = false;
     paddleSpeedMultiplier = 1.0f;
     ballSpeedMultiplier = 1.0f;
@@ -293,10 +293,10 @@ void Game::UpdateBonuses(const float deltaTime) {
 
     // Проверка времени действия бонусов
     Uint64 currentTime = SDL_GetTicks();
-    if (stickyPaddle && currentTime > safetyNetExpireTime) {
+    if (stickyPaddle && stickyPaddleExpireTime && currentTime > stickyPaddleExpireTime) {
         stickyPaddle = false;
     }
-    if (safetyNetActive && currentTime > safetyNetExpireTime) {
+    if (safetyNetActive && safetyNetExpireTime && currentTime > safetyNetExpireTime) {
         safetyNetActive = false;
     }
 }
@@ -443,9 +443,7 @@ void Game::ProcessInput() {
 
             case SDL_EVENT_MOUSE_MOTION:
                 // Управление кареткой мышью
-                if (!stickyPaddle) {
-                    paddle.x = event.motion.x - paddle.w / 2;
-                }
+                paddle.x = event.motion.x - paddle.w / 2;
                 break;
             default: continue;
         }
@@ -484,7 +482,7 @@ bool Game::Initialize() {
     paddleSpeedMultiplier = 1.0f;
     ballSpeedMultiplier = 1.0f;
     safetyNetExpireTime = 0;
-    stickyPaddle = false;
+    stickyPaddle = true;
     safetyNetActive = false;
 
     // Настройка рандомизации
