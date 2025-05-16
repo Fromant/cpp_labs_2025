@@ -1,6 +1,7 @@
 #include "Game.hpp"
 #include <random>
 #include <algorithm>
+#include <iostream>
 
 constexpr int SCREEN_WIDTH = 800;
 constexpr int SCREEN_HEIGHT = 600;
@@ -90,8 +91,9 @@ void Game::CheckCollisions() {
 
         // Расчет точки удара [-1, 1]
         float hitPosition = (ball.x + ball.w / 2 - paddle.x) / paddle.w * 2 - 1;
-        ballVelocity.x = hitPosition * fabs(ballVelocity.x + ballVelocity.y);
-        ballVelocity.y = -fabs(ballVelocity.y);
+        float prevVelocity = fabs(ballVelocity.x) + fabs(ballVelocity.y);
+        ballVelocity.x = hitPosition * prevVelocity;
+        ballVelocity.y = -(1-fabs(hitPosition))*prevVelocity;
     }
 
     // Коллизия с блоками
@@ -159,7 +161,6 @@ void Game::HandleBlockHit(Block& block) {
 
     // Изменение скорости мяча для специальных блоков
     if (block.health == 3) {
-        // Пример для блока, увеличивающего скорость
         ballSpeedMultiplier *= 1.2f;
     }
 }
