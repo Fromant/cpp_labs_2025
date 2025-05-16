@@ -5,13 +5,16 @@
 constexpr int SCREEN_WIDTH = 800;
 constexpr int SCREEN_HEIGHT = 600;
 constexpr float BASE_PADDLE_SPEED = 200.0f;
+constexpr int BASE_PADDLE_WIDTH = 100;
+constexpr int BASE_PADDLE_HEIGHT = 20;
 constexpr float BASE_BALL_SPEED = 100.0f;
 constexpr int LIVES = 1;
+constexpr Uint64 STICKY_PADDLE_DURATION = 10000; //10s
+constexpr Uint64 SAFETY_NET_DURATION = 10000; //10s
 
 Game::Game() : window(nullptr), renderer(nullptr), isRunning(true), needsReset(false),
                score(0), lives(LIVES), stickyPaddle(false), safetyNetActive(false),
-               originalPaddleWidth(100), paddleSpeedMultiplier(1.0f),
-               ballSpeedMultiplier(1.0f), safetyNetExpireTime(0) {}
+               paddleSpeedMultiplier(1.0f), ballSpeedMultiplier(1.0f) {}
 
 void Game::ResetGame() {
     // Reset game state
@@ -23,7 +26,10 @@ void Game::ResetGame() {
     ballSpeedMultiplier = 1.0f;
 
     // Reset paddle and ball
-    paddle = {SCREEN_WIDTH / 2 - originalPaddleWidth / 2, SCREEN_HEIGHT - 40, originalPaddleWidth, 20};
+    paddle = {
+            SCREEN_WIDTH / 2 - BASE_PADDLE_WIDTH / 2, SCREEN_HEIGHT - 2 * BASE_PADDLE_HEIGHT, BASE_PADDLE_WIDTH,
+            BASE_PADDLE_HEIGHT
+        };
     ball = {SCREEN_WIDTH / 2 - 10, SCREEN_HEIGHT / 2 - 10, 20, 20};
     ballVelocity = {BASE_BALL_SPEED, -BASE_BALL_SPEED};
 
@@ -186,11 +192,11 @@ void Game::HandleBallBlockCollision(Block& block) {
 void Game::ActivateBonus(BonusType type) {
     switch (type) {
         case BonusType::ExpandPaddle:
-            paddle.w = originalPaddleWidth * 1.5f;
+            paddle.w = BASE_PADDLE_WIDTH * 1.5f;
             break;
 
         case BonusType::ShrinkPaddle:
-            paddle.w = originalPaddleWidth * 0.75f;
+            paddle.w = BASE_PADDLE_WIDTH * 0.75f;
             break;
 
         case BonusType::SpeedUp:
@@ -199,12 +205,12 @@ void Game::ActivateBonus(BonusType type) {
 
         case BonusType::StickyPaddle:
             stickyPaddle = true;
-            safetyNetExpireTime = SDL_GetTicks() + 10000; // 10 секунд
+            stickyPaddleExpireTime = SDL_GetTicks() + STICKY_PADDLE_DURATION;
             break;
 
         case BonusType::SafetyNet:
             safetyNetActive = true;
-            safetyNetExpireTime = SDL_GetTicks() + 10000; // 10 seconds
+            safetyNetExpireTime = SDL_GetTicks() + SAFETY_NET_DURATION;
             break;
 
         case BonusType::RandomDirection: {
@@ -475,7 +481,6 @@ bool Game::Initialize() {
     }
 
     // Инициализация игрового состояния
-    originalPaddleWidth = 100.0f;
     paddleSpeedMultiplier = 1.0f;
     ballSpeedMultiplier = 1.0f;
     safetyNetExpireTime = 0;
@@ -490,10 +495,10 @@ bool Game::Initialize() {
 
     // Начальные координаты каретки
     paddle = {
-            SCREEN_WIDTH / 2 - originalPaddleWidth / 2,
-            SCREEN_HEIGHT - 40,
-            originalPaddleWidth,
-            20
+            SCREEN_WIDTH / 2 - BASE_PADDLE_WIDTH / 2,
+            SCREEN_HEIGHT - 2 * BASE_PADDLE_HEIGHT,
+            BASE_PADDLE_WIDTH,
+            BASE_PADDLE_HEIGHT
         };
 
     // Начальное состояние мяча

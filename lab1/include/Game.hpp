@@ -44,10 +44,10 @@ private:
     int lives;
     bool stickyPaddle;
     bool safetyNetActive;
-    float originalPaddleWidth;
     float paddleSpeedMultiplier;
     float ballSpeedMultiplier;
     const float maxBallSpeed = 500; // Максимальная скорость мяча
     const float ballRadius = ball.w / 2.0f; // Радиус для точных расчетов
     Uint64 safetyNetExpireTime;
+    Uint64 stickyPaddleExpireTime;
 };
