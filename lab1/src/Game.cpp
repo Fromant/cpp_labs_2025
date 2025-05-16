@@ -14,7 +14,7 @@ constexpr Uint64 STICKY_PADDLE_DURATION = 10000; //10s
 constexpr Uint64 SAFETY_NET_DURATION = 10000; //10s
 
 Game::Game() : window(nullptr), renderer(nullptr), isRunning(true), needsReset(false),
-               score(0), lives(LIVES), stickyPaddle(true), safetyNetActive(false),
+               score(0), lives(LIVES), stickyPaddle(false), safetyNetActive(false),
                paddleSpeedMultiplier(1.0f), ballSpeedMultiplier(1.0f) {}
 
 void Game::ResetGame() {
@@ -89,11 +89,13 @@ void Game::CheckCollisions() {
         // Корректировка позиции мяча
         ball.y = paddle.y - ball.h;
 
-        // Расчет точки удара [-1, 1]
-        float hitPosition = (ball.x + ball.w / 2 - paddle.x) / paddle.w * 2 - 1;
-        float prevVelocity = fabs(ballVelocity.x) + fabs(ballVelocity.y);
-        ballVelocity.x = hitPosition * prevVelocity;
-        ballVelocity.y = -(1-fabs(hitPosition))*prevVelocity;
+        if (!stickyPaddle) {
+            // Расчет точки удара [-1, 1]
+            float hitPosition = (ball.x + ball.w / 2 - paddle.x) / paddle.w * 2 - 1;
+            float prevVelocity = fabs(ballVelocity.x) + fabs(ballVelocity.y);
+            ballVelocity.x = hitPosition * prevVelocity;
+            ballVelocity.y = -(1 - fabs(hitPosition)) * prevVelocity;
+        } else ballSticked = true;
     }
 
     // Коллизия с блоками
@@ -332,7 +334,7 @@ void Game::Update(const float deltaTime) {
     UpdatePaddle(deltaTime);
 
     // Прилипание мяча к каретке
-    if (stickyPaddle) {
+    if (ballSticked) {
         ball.x = paddle.x + paddle.w / 2 - ball.w / 2;
         ball.y = paddle.y - ball.h;
     }

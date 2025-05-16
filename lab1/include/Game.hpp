@@ -44,6 +44,7 @@ private:
     int lives;
     bool stickyPaddle;
     bool safetyNetActive;
+    bool ballSticked = false;
     float paddleSpeedMultiplier;
     float ballSpeedMultiplier;
     const float maxBallSpeed = 500; // Максимальная скорость мяча
