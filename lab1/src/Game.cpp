@@ -2,19 +2,20 @@
 #include <random>
 #include <algorithm>
 
-const int SCREEN_WIDTH = 800;
-const int SCREEN_HEIGHT = 600;
-const float BASE_PADDLE_SPEED = 200.0f;
-const float BASE_BALL_SPEED = 100.0f;
+constexpr int SCREEN_WIDTH = 800;
+constexpr int SCREEN_HEIGHT = 600;
+constexpr float BASE_PADDLE_SPEED = 200.0f;
+constexpr float BASE_BALL_SPEED = 100.0f;
+constexpr int LIVES = 1;
 
 Game::Game() : window(nullptr), renderer(nullptr), isRunning(true), needsReset(false),
-               score(0), lives(3), stickyPaddle(false), safetyNetActive(false),
+               score(0), lives(LIVES), stickyPaddle(false), safetyNetActive(false),
                originalPaddleWidth(100), paddleSpeedMultiplier(1.0f),
                ballSpeedMultiplier(1.0f), safetyNetExpireTime(0) {}
 
 void Game::ResetGame() {
     // Reset game state
-    lives = 3;
+    lives = LIVES;
     score = 0;
     stickyPaddle = false;
     safetyNetActive = false;
