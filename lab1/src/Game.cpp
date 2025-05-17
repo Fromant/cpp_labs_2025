@@ -165,6 +165,24 @@ void Game::Render() const {
         SDL_RenderFillRect(renderer, &gem);
     }
 
+    //render bonuses
+    for (const auto& bonus : bonuses) {
+        int x = bonus.i % LINE_LENGTH;
+        int y = bonus.i / LINE_LENGTH;
+        const SDL_Color& color = Bonus::getColor(bonus.t);
+
+        SDL_SetRenderDrawColor(renderer,
+                               color.r, color.g, color.b, color.a);
+
+        SDL_FRect f{
+                float(x * GEM_WIDTH + GEM_WIDTH / 8 * 3),
+                float(y * GEM_HEIGHT + GEM_HEIGHT / 8 * 3),
+                GEM_WIDTH / 4, GEM_HEIGHT / 4
+            };
+
+        SDL_RenderFillRect(renderer, &f);
+    }
+
     //outline selected gem
     if (selectedGem != -1) {
         size_t gemX = selectedGem % LINE_LENGTH;
@@ -200,8 +218,9 @@ bool Game::CheckTriplets() {
 
             //move all gems in vertical downwards
             int j = i + additional * LINE_LENGTH;
-            for (; j > 3 * LINE_LENGTH; j -= LINE_LENGTH) {
-                field[j] = field[j - (3+additional) * LINE_LENGTH];
+            for (int dj = 0; dj < 3 + additional; dj++) {
+                SpawnBonus(j - dj * LINE_LENGTH);
+            }
             for (; j > (3 + additional) * LINE_LENGTH; j -= LINE_LENGTH) {
                 field[j] = field[j - (3 + additional) * LINE_LENGTH];
             }
@@ -232,6 +251,7 @@ bool Game::CheckTriplets() {
             //move all gems from upwards
             for (int x = i + additional; x > i - 3; x--) {
                 int j = x;
+                SpawnBonus(j);
                 for (; j > LINE_LENGTH; j -= LINE_LENGTH) {
                     field[j] = field[j - LINE_LENGTH];
                 }
@@ -248,7 +268,58 @@ bool Game::CheckTriplets() {
 }
 
 void Game::Update() {
+    RunBonuses();
     CheckTriplets();
 }
 
-void Game::SpawnBonuses() {}
+void Game::RunBonuses() {
+    if (bonuses.empty()) return;
+    //run only one bonus at a time
+    const auto& bonus = bonuses.back();
+
+    if (bonus.t == Bonus::BOMB) {
+        int x = bonus.i % LINE_LENGTH;
+        int y = bonus.i / LINE_LENGTH;
+
+        for (int i = 0; i < 4; i++) {
+            //destroy gem at (x,y)
+            int j = x + y * LINE_LENGTH;
+            for (; j > LINE_LENGTH; j -= LINE_LENGTH) {
+                field[j] = field[j - LINE_LENGTH];
+            }
+            Gem n;
+            n.color = PALETTE[getRandomInt(0,PALETTE_SIZE)];
+            field[j]=n;
+
+
+            //generate new x,y
+            x = getRandomInt(0, LINE_LENGTH);
+            y = getRandomInt(0, ROWS);
+        }
+    }
+    else if (bonus.t == Bonus::RECOLOR) {}
+
+    bonuses.pop_back();
+}
+
+
+void Game::SpawnBonus(size_t destroyed) {
+    constexpr float SPAWN_CHANCE = 0.5;
+    constexpr int SPAWN_RADIUS = 3;
+    if (static_cast<float>(getRandomInt(0, 101)) / 100 > SPAWN_CHANCE) {
+        //do spawn
+
+        int x = destroyed % LINE_LENGTH;
+        int y = destroyed / LINE_LENGTH;
+
+        int xNew = getRandomInt(std::max(0, x - SPAWN_RADIUS),
+                                std::min(LINE_LENGTH, x + SPAWN_RADIUS));
+        int yNew = getRandomInt(std::max(0, y - SPAWN_RADIUS),
+                                std::min(ROWS, y + SPAWN_RADIUS));
+
+        bonuses.emplace_back(
+            xNew + yNew * LINE_LENGTH,
+            static_cast<Bonus::BonusType>(getRandomInt(0, Bonus::BonusType::SIZE))
+        );
+    }
+}
