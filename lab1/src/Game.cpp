@@ -62,12 +62,48 @@ int getRandomInt() {
     return dist(gen);
 }
 
+bool operator==(const SDL_Color& a, const SDL_Color& b) {
+    if (a.r != b.r || a.g != b.g || a.b != b.b || a.a != b.a) return false;
+    return true;
+}
+
+bool Game::CheckTriplets() const {
+    for (int i = 2; i < TOTAL_GEMS; i++) {
+        const auto& src = field[i].color;
+
+        if (i >= 2 * LINE_LENGTH)
+            if (field[i - LINE_LENGTH].color == src && field[i - 2 * LINE_LENGTH].color == src)
+                return true;
+
+        if (i % LINE_LENGTH >= 2)
+            if (field[i - 1].color == src && field[i - 2].color == src)
+                return true;
+    }
+
+    return false;
+}
+
+bool Game::canPlace(size_t i, SDL_Color src) {
+    if (i >= 2 * LINE_LENGTH)
+        if (field[i - LINE_LENGTH].color == src && field[i - 2 * LINE_LENGTH].color == src)
+            return false;
+
+    if (i % LINE_LENGTH >= 2)
+        if (field[i - 1].color == src && field[i - 2].color == src)
+            return false;
+    return true;
+}
+
+
 void Game::InitField() {
     for (int i = 0; i < TOTAL_GEMS; i++) {
         Gem gem;
+        auto color = PALETTE[getRandomInt<0, PALETTE_SIZE>()];
+        while (!canPlace(i, color)) {
+            color = PALETTE[getRandomInt<0, PALETTE_SIZE>()];
+        }
 
-        gem.color = PALETTE[getRandomInt<0, PALETTE_SIZE>()];
-
+        gem.color = color;
         field.emplace_back(gem);
     }
 }
@@ -118,7 +154,7 @@ void Game::HandleClick(const SDL_MouseButtonEvent& e) {
         //unselect
         selectedGem = -1;
     }
-    //otherwise, change selection to clicked
+    //otherwise, change selection to clicked gem
     else selectedGem = clicked;
 }
 

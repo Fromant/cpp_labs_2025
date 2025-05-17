@@ -20,6 +20,8 @@ private:
     size_t selectedGem = -1;
 
     void InitField();
+    bool CheckTriplets() const;
+    bool canPlace(size_t i, SDL_Color color);
 
     void Render() const;
     void Update();
