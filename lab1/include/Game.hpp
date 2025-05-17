@@ -24,7 +24,7 @@ private:
 
     void Render() const;
     void Update();
-    void CheckTriplets();
+    bool CheckTriplets();
     void SpawnBonuses();
     void ProcessInput();
     void HandleClick(const SDL_MouseButtonEvent& e);

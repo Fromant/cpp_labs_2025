@@ -58,7 +58,7 @@ int getRandomInt() {
     static std::random_device rd; // Seed for random number engine
     static std::mt19937 gen(rd()); // Mersenne Twister engine
 
-    static std::uniform_int_distribution<int> dist(start, end);
+    static std::uniform_int_distribution<int> dist(start, end-1);
     return dist(gen);
 }
 
@@ -181,17 +181,19 @@ void Game::Render() const {
     SDL_RenderPresent(renderer);
 }
 
-void Game::CheckTriplets() {
+bool Game::CheckTriplets() {
+    bool located = false;
     for (int i = 2; i < TOTAL_GEMS; i++) {
         const auto& src = field[i].color;
 
         if (i >= 2 * LINE_LENGTH &&
             field[i - LINE_LENGTH].color == src && field[i - 2 * LINE_LENGTH].color == src) {
             //located vertical triplet
+            located = true;
 
             //move all gems in vertical downwards
             int j = i;
-            for (; j > 2 * LINE_LENGTH; j -= LINE_LENGTH) {
+            for (; j > 3 * LINE_LENGTH; j -= LINE_LENGTH) {
                 field[j] = field[j - 3 * LINE_LENGTH];
             }
 
@@ -208,6 +210,7 @@ void Game::CheckTriplets() {
         if (i % LINE_LENGTH >= 2 &&
             field[i - 1].color == src && field[i - 2].color == src) {
             //located horizontal triplet
+            located = true;
             //move all gems from upwards
             for (int x = i; x > i - 3; x--) {
                 int j = x;
@@ -222,10 +225,11 @@ void Game::CheckTriplets() {
             }
         }
     }
+    return located;
 }
 
 void Game::Update() {
-    CheckTriplets();
+    while (CheckTriplets()) {}
 }
 
 void Game::SpawnBonuses() {}
