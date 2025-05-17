@@ -86,19 +86,40 @@ void Game::ProcessInput() {
     while (SDL_PollEvent(&e)) {
         if (e.type == SDL_EVENT_QUIT) {
             shouldExit = true;
-        } else if (e.type == SDL_EVENT_MOUSE_BUTTON_DOWN) {
+        }
+        else if (e.type == SDL_EVENT_MOUSE_BUTTON_DOWN) {
             HandleClick(e.button);
         }
     }
 }
 
+bool isNeighbours(size_t a, size_t b) {
+    if (a - b == 1 || a - b == -1) return true;
+    if (a - b == LINE_LENGTH || a - b == -LINE_LENGTH) return true;
+    return false;
+}
+
 void Game::HandleClick(const SDL_MouseButtonEvent& e) {
-    if (e.button != SDL_BUTTON_LEFT || !e.down) return;
+    if (e.button != SDL_BUTTON_LEFT || !e.down) {
+        selectedGem = -1;
+        return;
+    }
 
     const int x = e.x / GEM_WIDTH;
     const int y = e.y / GEM_HEIGHT;
 
-    selectedGem = x + y * LINE_LENGTH;
+    size_t clicked = x + y * LINE_LENGTH;
+    if (selectedGem != -1 && isNeighbours(selectedGem, clicked)) {
+        //change gems
+        auto tmp = field[selectedGem];
+        field[selectedGem] = field[clicked];
+        field[clicked] = tmp;
+
+        //unselect
+        selectedGem = -1;
+    }
+    //otherwise, change selection to clicked
+    else selectedGem = clicked;
 }
 
 
