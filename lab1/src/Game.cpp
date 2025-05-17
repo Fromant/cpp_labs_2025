@@ -15,6 +15,7 @@ constexpr int GEM_WIDTH = 40;
 constexpr int GEM_HEIGHT = 40;
 constexpr int TOTAL_GEMS = SCREEN_WIDTH * SCREEN_HEIGHT / GEM_WIDTH / GEM_HEIGHT;
 constexpr int LINE_LENGTH = SCREEN_WIDTH / GEM_WIDTH;
+constexpr int ROWS = SCREEN_HEIGHT / GEM_HEIGHT;
 
 
 Game::Game() {
@@ -54,12 +55,11 @@ bool Game::Initialize() {
     return true;
 }
 
-template <int start, int end>
-int getRandomInt() {
+int getRandomInt(int start, int end) {
     static std::random_device rd; // Seed for random number engine
     static std::mt19937 gen(rd()); // Mersenne Twister engine
 
-    static std::uniform_int_distribution<int> dist(start, end - 1);
+    std::uniform_int_distribution<int> dist(start, end - 1);
     return dist(gen);
 }
 
@@ -83,9 +83,9 @@ bool Game::canPlace(size_t i, SDL_Color src) const {
 void Game::InitField() {
     for (int i = 0; i < TOTAL_GEMS; i++) {
         Gem gem;
-        auto color = PALETTE[getRandomInt<0, PALETTE_SIZE>()];
+        auto color = PALETTE[getRandomInt(0, PALETTE_SIZE)];
         while (!canPlace(i, color)) {
-            color = PALETTE[getRandomInt<0, PALETTE_SIZE>()];
+            color = PALETTE[getRandomInt(0, PALETTE_SIZE)];
         }
 
         gem.color = color;
@@ -202,16 +202,19 @@ bool Game::CheckTriplets() {
             int j = i + additional * LINE_LENGTH;
             for (; j > 3 * LINE_LENGTH; j -= LINE_LENGTH) {
                 field[j] = field[j - (3+additional) * LINE_LENGTH];
+            for (; j > (3 + additional) * LINE_LENGTH; j -= LINE_LENGTH) {
+                field[j] = field[j - (3 + additional) * LINE_LENGTH];
             }
 
             for (; j > 0; j -= LINE_LENGTH) {
                 //generate new gems
                 Gem gem;
-                auto color = PALETTE[getRandomInt<0, PALETTE_SIZE>()];
+                auto color = PALETTE[getRandomInt(0, PALETTE_SIZE)];
 
                 gem.color = color;
                 field[j] = gem;
             }
+            break;
         }
 
         if (i % LINE_LENGTH >= 2 &&
@@ -233,11 +236,12 @@ bool Game::CheckTriplets() {
                     field[j] = field[j - LINE_LENGTH];
                 }
                 Gem gem;
-                auto color = PALETTE[getRandomInt<0, PALETTE_SIZE>()];
+                auto color = PALETTE[getRandomInt(0, PALETTE_SIZE)];
 
                 gem.color = color;
                 field[j] = gem;
             }
+            break;
         }
     }
     return located;
