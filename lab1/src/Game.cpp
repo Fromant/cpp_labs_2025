@@ -7,6 +7,7 @@
 #include "Colors.hpp"
 #include "SDL3/SDL_init.h"
 #include "SDL3/SDL_log.h"
+#include "SDL3/SDL_timer.h"
 
 constexpr int SCREEN_WIDTH = 800;
 constexpr int SCREEN_HEIGHT = 600;
@@ -58,7 +59,7 @@ int getRandomInt() {
     static std::random_device rd; // Seed for random number engine
     static std::mt19937 gen(rd()); // Mersenne Twister engine
 
-    static std::uniform_int_distribution<int> dist(start, end-1);
+    static std::uniform_int_distribution<int> dist(start, end - 1);
     return dist(gen);
 }
 
@@ -98,6 +99,7 @@ void Game::Run() {
         ProcessInput();
         Update();
         Render();
+        SDL_Delay(100);
     }
 }
 
@@ -191,10 +193,15 @@ bool Game::CheckTriplets() {
             //located vertical triplet
             located = true;
 
+            int additional = 1;
+            while (i + additional * LINE_LENGTH < TOTAL_GEMS && field[i + additional * LINE_LENGTH].color == src)
+                additional++;
+            additional--;
+
             //move all gems in vertical downwards
-            int j = i;
+            int j = i + additional * LINE_LENGTH;
             for (; j > 3 * LINE_LENGTH; j -= LINE_LENGTH) {
-                field[j] = field[j - 3 * LINE_LENGTH];
+                field[j] = field[j - (3+additional) * LINE_LENGTH];
             }
 
             for (; j > 0; j -= LINE_LENGTH) {
@@ -211,8 +218,16 @@ bool Game::CheckTriplets() {
             field[i - 1].color == src && field[i - 2].color == src) {
             //located horizontal triplet
             located = true;
+
+            int additional = 1;
+            int endLineIndex = (i / LINE_LENGTH + 1) * LINE_LENGTH;
+            while (i + additional < endLineIndex && field[i + additional].color == src)
+                additional++;
+
+            additional--;
+
             //move all gems from upwards
-            for (int x = i; x > i - 3; x--) {
+            for (int x = i + additional; x > i - 3; x--) {
                 int j = x;
                 for (; j > LINE_LENGTH; j -= LINE_LENGTH) {
                     field[j] = field[j - LINE_LENGTH];
@@ -229,7 +244,7 @@ bool Game::CheckTriplets() {
 }
 
 void Game::Update() {
-    while (CheckTriplets()) {}
+    CheckTriplets();
 }
 
 void Game::SpawnBonuses() {}
