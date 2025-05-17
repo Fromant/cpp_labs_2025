@@ -20,12 +20,11 @@ private:
     size_t selectedGem = -1;
 
     void InitField();
-    bool CheckTriplets() const;
-    bool canPlace(size_t i, SDL_Color color);
+    bool canPlace(size_t i, SDL_Color color) const;
 
     void Render() const;
     void Update();
-    void CheckGems();
+    void CheckTriplets();
     void SpawnBonuses();
     void ProcessInput();
     void HandleClick(const SDL_MouseButtonEvent& e);

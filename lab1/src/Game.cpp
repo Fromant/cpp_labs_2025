@@ -67,23 +67,7 @@ bool operator==(const SDL_Color& a, const SDL_Color& b) {
     return true;
 }
 
-bool Game::CheckTriplets() const {
-    for (int i = 2; i < TOTAL_GEMS; i++) {
-        const auto& src = field[i].color;
-
-        if (i >= 2 * LINE_LENGTH)
-            if (field[i - LINE_LENGTH].color == src && field[i - 2 * LINE_LENGTH].color == src)
-                return true;
-
-        if (i % LINE_LENGTH >= 2)
-            if (field[i - 1].color == src && field[i - 2].color == src)
-                return true;
-    }
-
-    return false;
-}
-
-bool Game::canPlace(size_t i, SDL_Color src) {
+bool Game::canPlace(size_t i, SDL_Color src) const {
     if (i >= 2 * LINE_LENGTH)
         if (field[i - LINE_LENGTH].color == src && field[i - 2 * LINE_LENGTH].color == src)
             return false;
@@ -197,8 +181,51 @@ void Game::Render() const {
     SDL_RenderPresent(renderer);
 }
 
-void Game::CheckGems() {}
+void Game::CheckTriplets() {
+    for (int i = 2; i < TOTAL_GEMS; i++) {
+        const auto& src = field[i].color;
 
-void Game::Update() {}
+        if (i >= 2 * LINE_LENGTH &&
+            field[i - LINE_LENGTH].color == src && field[i - 2 * LINE_LENGTH].color == src) {
+            //located vertical triplet
+
+            //move all gems in vertical downwards
+            int j = i;
+            for (; j > 2 * LINE_LENGTH; j -= LINE_LENGTH) {
+                field[j] = field[j - 3 * LINE_LENGTH];
+            }
+
+            for (; j > 0; j -= LINE_LENGTH) {
+                //generate new gems
+                Gem gem;
+                auto color = PALETTE[getRandomInt<0, PALETTE_SIZE>()];
+
+                gem.color = color;
+                field[j] = gem;
+            }
+        }
+
+        if (i % LINE_LENGTH >= 2 &&
+            field[i - 1].color == src && field[i - 2].color == src) {
+            //located horizontal triplet
+            //move all gems from upwards
+            for (int x = i; x > i - 3; x--) {
+                int j = x;
+                for (; j > LINE_LENGTH; j -= LINE_LENGTH) {
+                    field[j] = field[j - LINE_LENGTH];
+                }
+                Gem gem;
+                auto color = PALETTE[getRandomInt<0, PALETTE_SIZE>()];
+
+                gem.color = color;
+                field[j] = gem;
+            }
+        }
+    }
+}
+
+void Game::Update() {
+    CheckTriplets();
+}
 
 void Game::SpawnBonuses() {}
