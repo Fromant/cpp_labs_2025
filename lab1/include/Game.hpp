@@ -17,7 +17,7 @@ private:
     SDL_Renderer* renderer = nullptr;
     std::vector<Gem> field;
     bool shouldExit = false;
-    SDL_FRect selectedGem = {0,0,0,0};
+    size_t selectedGem = -1;
 
     void InitField();
 

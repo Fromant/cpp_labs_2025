@@ -1,6 +1,8 @@
 #include "Game.hpp"
 
 #include <iostream>
+#include <random>
+#include <bits/uniform_int_dist.h>
 
 #include "Colors.hpp"
 #include "SDL3/SDL_init.h"
@@ -11,6 +13,8 @@ constexpr int SCREEN_HEIGHT = 600;
 constexpr int GEM_WIDTH = 40;
 constexpr int GEM_HEIGHT = 40;
 constexpr int TOTAL_GEMS = SCREEN_WIDTH * SCREEN_HEIGHT / GEM_WIDTH / GEM_HEIGHT;
+constexpr int LINE_LENGTH = SCREEN_WIDTH / GEM_WIDTH;
+
 
 Game::Game() {
     field.reserve(TOTAL_GEMS);
@@ -44,15 +48,25 @@ bool Game::Initialize() {
     }
 
     InitField();
+    SDL_SetRenderDrawBlendMode(renderer,SDL_BLENDMODE_BLEND);
 
     return true;
+}
+
+template <int start, int end>
+int getRandomInt() {
+    static std::random_device rd; // Seed for random number engine
+    static std::mt19937 gen(rd()); // Mersenne Twister engine
+
+    static std::uniform_int_distribution<int> dist(start, end);
+    return dist(gen);
 }
 
 void Game::InitField() {
     for (int i = 0; i < TOTAL_GEMS; i++) {
         Gem gem;
 
-        gem.color = PALETTE[i % PALETTE_SIZE];
+        gem.color = PALETTE[getRandomInt<0, PALETTE_SIZE>()];
 
         field.emplace_back(gem);
     }
@@ -72,8 +86,7 @@ void Game::ProcessInput() {
     while (SDL_PollEvent(&e)) {
         if (e.type == SDL_EVENT_QUIT) {
             shouldExit = true;
-        }
-        else if (e.type == SDL_EVENT_MOUSE_BUTTON_DOWN) {
+        } else if (e.type == SDL_EVENT_MOUSE_BUTTON_DOWN) {
             HandleClick(e.button);
         }
     }
@@ -82,16 +95,14 @@ void Game::ProcessInput() {
 void Game::HandleClick(const SDL_MouseButtonEvent& e) {
     if (e.button != SDL_BUTTON_LEFT || !e.down) return;
 
-    const float x = e.x;
-    const float y = e.y;
+    const int x = e.x / GEM_WIDTH;
+    const int y = e.y / GEM_HEIGHT;
 
-
+    selectedGem = x + y * LINE_LENGTH;
 }
 
 
 void Game::Render() const {
-    //count of gems in 1 row
-    constexpr int LINE_LENGTH = SCREEN_WIDTH / GEM_WIDTH;
     SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
     SDL_RenderClear(renderer);
 
@@ -109,6 +120,21 @@ void Game::Render() const {
         SDL_SetRenderDrawColor(renderer,
                                color.r, color.g, color.b, color.a);
         SDL_RenderFillRect(renderer, &gem);
+    }
+
+    //outline selected gem
+    if (selectedGem != -1) {
+        size_t gemX = selectedGem % LINE_LENGTH;
+        size_t gemY = selectedGem / LINE_LENGTH;
+        SDL_FRect gem{
+                static_cast<float>(gemX * GEM_WIDTH), static_cast<float>(gemY * GEM_HEIGHT),
+                GEM_WIDTH, GEM_HEIGHT
+            };
+        SDL_SetRenderDrawColor(renderer, 255, 255, 255, 96);
+        SDL_RenderFillRect(renderer, &gem);
+
+        SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
+        SDL_RenderRect(renderer, &gem);
     }
 
     SDL_RenderPresent(renderer);
