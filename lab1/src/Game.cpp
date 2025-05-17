@@ -273,33 +273,53 @@ void Game::Update() {
 }
 
 void Game::RunBonuses() {
-    if (bonuses.empty()) return;
-    //run only one bonus at a time
-    const auto& bonus = bonuses.back();
 
-    if (bonus.t == Bonus::BOMB) {
-        int x = bonus.i % LINE_LENGTH;
-        int y = bonus.i / LINE_LENGTH;
+    for ( const auto& bonus : bonuses) {
+        if (bonus.t == Bonus::BOMB) {
+            int x = bonus.i % LINE_LENGTH;
+            int y = bonus.i / LINE_LENGTH;
 
-        for (int i = 0; i < 4; i++) {
-            //destroy gem at (x,y)
-            int j = x + y * LINE_LENGTH;
-            for (; j > LINE_LENGTH; j -= LINE_LENGTH) {
-                field[j] = field[j - LINE_LENGTH];
+            for (int i = 0; i < 4; i++) {
+                //destroy gem at (x,y)
+                int j = x + y * LINE_LENGTH;
+                for (; j > LINE_LENGTH; j -= LINE_LENGTH) {
+                    field[j] = field[j - LINE_LENGTH];
+                }
+                Gem n;
+                n.color = PALETTE[getRandomInt(0, PALETTE_SIZE)];
+                field[j] = n;
+
+
+                //generate new x,y
+                x = getRandomInt(0, LINE_LENGTH);
+                y = getRandomInt(0, ROWS);
             }
-            Gem n;
-            n.color = PALETTE[getRandomInt(0,PALETTE_SIZE)];
-            field[j]=n;
-
-
-            //generate new x,y
-            x = getRandomInt(0, LINE_LENGTH);
-            y = getRandomInt(0, ROWS);
         }
-    }
-    else if (bonus.t == Bonus::RECOLOR) {}
+        else if (bonus.t == Bonus::RECOLOR) {
+            constexpr int RECOLOR_RADIUS = 2;
+            auto src_color = field[bonus.i].color;
+            field[bonus.i].color = PALETTE[getRandomInt(0, PALETTE_SIZE)];
 
-    bonuses.pop_back();
+            int x = bonus.i % LINE_LENGTH;
+            int y = bonus.i / LINE_LENGTH;
+
+            int x1 = getRandomInt(std::max(0, x - RECOLOR_RADIUS), std::min(x + RECOLOR_RADIUS, LINE_LENGTH));
+            int y1 = getRandomInt(std::max(0, y - RECOLOR_RADIUS), std::min(y + RECOLOR_RADIUS, ROWS));
+
+            size_t i1 = x1 + y1 * LINE_LENGTH;
+
+            while (isNeighbours(bonus.i, i1)) {
+                x1 = getRandomInt(std::max(0, x - RECOLOR_RADIUS), std::min(x + RECOLOR_RADIUS, LINE_LENGTH));
+                y1 = getRandomInt(std::max(0, y - RECOLOR_RADIUS), std::min(y + RECOLOR_RADIUS, ROWS));
+                i1 = x1 + y1 * LINE_LENGTH;
+            }
+
+            field[i1].color = src_color;
+        }
+
+    }
+
+    bonuses.clear();
 }
 
 
