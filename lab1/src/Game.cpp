@@ -8,7 +8,9 @@ constexpr int SCREEN_HEIGHT = 600;
 constexpr float BASE_PADDLE_SPEED = 200.0f;
 constexpr int BASE_PADDLE_WIDTH = 100;
 constexpr int BASE_PADDLE_HEIGHT = 20;
-constexpr float BASE_BALL_SPEED = 200.0f;
+constexpr float BASE_BALL_SPEED = 300.0f;
+constexpr float BASE_BALL_HEIGHT = 20;
+constexpr float BASE_BALL_WIDTH = 20;
 constexpr int LIVES = 1;
 constexpr Uint64 STICKY_PADDLE_DURATION = 10000; //10s
 constexpr Uint64 SAFETY_NET_DURATION = 10000; //10s
@@ -21,18 +23,24 @@ void Game::ResetGame() {
     // Reset game state
     lives = LIVES;
     score = 0;
-    stickyPaddle = true;
+    stickyPaddle = false;
+    ballSticked = true;
     safetyNetActive = false;
     paddleSpeedMultiplier = 1.0f;
     ballSpeedMultiplier = 1.0f;
+    safetyNetExpireTime = 0;
+    stickyPaddleExpireTime = 0;
 
     // Reset paddle and ball
     paddle = {
             SCREEN_WIDTH / 2 - BASE_PADDLE_WIDTH / 2, SCREEN_HEIGHT - 2 * BASE_PADDLE_HEIGHT, BASE_PADDLE_WIDTH,
             BASE_PADDLE_HEIGHT
         };
-    ball = {SCREEN_WIDTH / 2 - 10, SCREEN_HEIGHT / 2 - 10, 20, 20};
-    ballVelocity = {BASE_BALL_SPEED, -BASE_BALL_SPEED};
+    ball = {
+            SCREEN_WIDTH / 2 - BASE_BALL_WIDTH / 2, SCREEN_HEIGHT / 2 - BASE_BALL_WIDTH / 2, BASE_BALL_WIDTH,
+            BASE_BALL_HEIGHT
+        };
+    ballVelocity = {0, -BASE_BALL_SPEED};
 
     // Rebuild blocks
     blocks.clear();
@@ -95,7 +103,11 @@ void Game::CheckCollisions() {
             float prevVelocity = fabs(ballVelocity.x) + fabs(ballVelocity.y);
             ballVelocity.x = hitPosition * prevVelocity;
             ballVelocity.y = -(1 - fabs(hitPosition)) * prevVelocity;
-        } else ballSticked = true;
+        }
+        else {
+            ballSticked = true;
+            stickyPaddle = false;
+        }
     }
 
     // Коллизия с блоками
@@ -320,8 +332,12 @@ void Game::Update(const float deltaTime) {
             lives--;
             if (lives > 0) {
                 // Респавн мяча
-                ball = {SCREEN_WIDTH / 2 - 10, SCREEN_HEIGHT / 2 - 10, 20, 20};
-                ballVelocity = {BASE_BALL_SPEED, -BASE_BALL_SPEED};
+                ball = {
+                        SCREEN_WIDTH / 2 - BASE_BALL_WIDTH / 2, SCREEN_HEIGHT / 2 - BASE_BALL_HEIGHT / 2,
+                        BASE_BALL_WIDTH, BASE_BALL_HEIGHT
+                    };
+                ballVelocity = {0, -BASE_BALL_SPEED};
+                ballSticked = true;
             }
             else {
                 ResetGame();
@@ -352,7 +368,7 @@ void Game::Render() {
     SDL_RenderClear(renderer);
 
     // Отрисовка каретки
-    SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
+    SDL_SetRenderDrawColor(renderer, stickyPaddle ? 0 : 255, 255, stickyPaddle ? 0 : 255, 255);
     SDL_RenderFillRect(renderer, &paddle);
 
     // Отрисовка мяча
@@ -424,23 +440,17 @@ void Game::ProcessInput() {
                     ResetGame();
                 }
                 // Отпускание мяча при липкой каретке
-                if (stickyPaddle && event.key.key == SDLK_SPACE) {
-                    stickyPaddle = false;
-                    ballVelocity = {
-                            BASE_BALL_SPEED * ballSpeedMultiplier,
-                            -BASE_BALL_SPEED * ballSpeedMultiplier
-                        };
+                else if (ballSticked && event.key.key == SDLK_SPACE) {
+                    ballSticked = false;
+                    ballVelocity = {0, -BASE_BALL_SPEED * ballSpeedMultiplier};
                 }
                 break;
 
             case SDL_EVENT_MOUSE_BUTTON_DOWN:
                 // Отпускание мяча по клику мыши
-                if (stickyPaddle) {
-                    stickyPaddle = false;
-                    ballVelocity = {
-                            BASE_BALL_SPEED * ballSpeedMultiplier,
-                            -BASE_BALL_SPEED * ballSpeedMultiplier
-                        };
+                if (ballSticked) {
+                    ballSticked = false;
+                    ballVelocity = {0, -BASE_BALL_SPEED * ballSpeedMultiplier};
                 }
                 break;
 
@@ -503,7 +513,10 @@ bool Game::Initialize() {
         };
 
     // Начальное состояние мяча
-    ball = {SCREEN_WIDTH / 2 - 10, SCREEN_HEIGHT / 2 - 10, 20, 20};
+    ball = {
+            SCREEN_WIDTH / 2 - BASE_BALL_WIDTH / 2, SCREEN_HEIGHT / 2 - BASE_BALL_HEIGHT / 2,
+            BASE_BALL_WIDTH, BASE_BALL_HEIGHT
+        };
     ballVelocity = {BASE_BALL_SPEED, -BASE_BALL_SPEED};
 
     return true;
