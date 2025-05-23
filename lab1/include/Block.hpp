@@ -17,9 +17,10 @@ struct Block {
     bool indestructible;
     BonusType bonus;
     bool hasBonus;
+    bool accelerateBall;
     SDL_Color color;
 
-    Block(float x, float y, float w, float h, int hp, bool indestruct, BonusType bonusType);
+    Block(float x, float y, float w, float h, int hp, bool indestruct, bool accelerateBall, BonusType bonusType);
     void Hit();
     bool IsDestroyed() const;
 };

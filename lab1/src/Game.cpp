@@ -15,6 +15,9 @@ constexpr int LIVES = 1;
 constexpr Uint64 STICKY_PADDLE_DURATION = 10000; //10s
 constexpr Uint64 SAFETY_NET_DURATION = 10000; //10s
 
+
+constexpr float ACCELERATION_BLOCK_MULTIPLIER = 1.2f;
+
 Game::Game() : window(nullptr), renderer(nullptr), isRunning(true), needsReset(false),
                score(0), lives(LIVES), stickyPaddle(false), safetyNetActive(false),
                paddleSpeedMultiplier(1.0f), ballSpeedMultiplier(1.0f) {}
@@ -60,6 +63,7 @@ void Game::ResetGame() {
             float y = i * (blockHeight + spacing) + 50;
             BonusType bonus = BonusType::None;
             bool indestruct = (i == 0);
+            bool accelerate = (i == 2);
             int health = indestruct ? 1 : (rows - i);
 
             if (!indestruct && (gen() % 4) == 0) {
@@ -68,7 +72,7 @@ void Game::ResetGame() {
 
             blocks.emplace_back(std::make_unique<Block>(
                 x, y, blockWidth, blockHeight,
-                health, indestruct, bonus
+                health, indestruct, accelerate, bonus
             ));
         }
     }
@@ -134,6 +138,9 @@ void Game::CheckCollisions() {
                 ball.y += (overlapTop < overlapBottom) ? -intersect.h : intersect.h;
             }
 
+            HandleBlockHit(**it);
+
+
             // Обработка удара по блоку
             if (!(*it)->indestructible) {
                 (*it)->health--;
@@ -174,8 +181,8 @@ void Game::HandleBlockHit(Block& block) {
     }
 
     // Изменение скорости мяча для специальных блоков
-    if (block.health == 3) {
-        ballSpeedMultiplier *= 1.2f;
+    if (block.accelerateBall) {
+        ballSpeedMultiplier *= ACCELERATION_BLOCK_MULTIPLIER;
     }
 }
 
@@ -390,19 +397,23 @@ void Game::Render() {
             SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
             SDL_RenderRect(renderer, &block->rect);
         }
+        if (block->accelerateBall) {
+            SDL_SetRenderDrawColor(renderer, 0, 255, 0, 255);
+            SDL_RenderRect(renderer, &block->rect);
+        }
     }
 
     // Отрисовка бонусов
     for (const auto& bonus : activeBonuses) {
         SDL_Color bonusColor;
         switch (bonus->type) {
-            case BonusType::ExpandPaddle: bonusColor = {0, 255, 0, 255};
+            case BonusType::ExpandPaddle: bonusColor = {0, 255, 255, 255};
                 break;
             case BonusType::ShrinkPaddle: bonusColor = {255, 0, 0, 255};
                 break;
             case BonusType::SpeedUp: bonusColor = {255, 255, 0, 255};
                 break;
-            case BonusType::StickyPaddle: bonusColor = {0, 255, 255, 255};
+            case BonusType::StickyPaddle: bonusColor = {0, 255, 0, 255};
                 break;
             case BonusType::SafetyNet: bonusColor = {255, 165, 0, 255};
                 break;
@@ -417,7 +428,7 @@ void Game::Render() {
 
     // Отрисовка HUD
     SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
-    // SDL_FRect bottomLine = {0, SCREEN_HEIGHT - 2, SCREEN_WIDTH, 2};
+
     if (safetyNetActive) {
         SDL_SetRenderDrawColor(renderer, 0, 255, 0, 255);
         SDL_RenderLine(renderer, 0, SCREEN_HEIGHT - 20, SCREEN_WIDTH, SCREEN_HEIGHT - 20);
@@ -443,8 +454,9 @@ void Game::ProcessInput() {
                 else if (ballSticked && event.key.key == SDLK_SPACE) {
                     ballSticked = false;
                     ballVelocity = {0, -BASE_BALL_SPEED * ballSpeedMultiplier};
-                } else if (event.key.key == SDLK_ESCAPE) {
-                    isRunning=false;
+                }
+                else if (event.key.key == SDLK_ESCAPE) {
+                    isRunning = false;
                 }
                 break;
 
