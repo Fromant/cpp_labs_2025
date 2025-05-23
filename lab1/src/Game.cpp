@@ -98,11 +98,11 @@ void Game::CheckCollisions() {
         ball.y = paddle.y - ball.h;
 
         if (!stickyPaddle) {
-            // Расчет точки удара [-1, 1]
-            float hitPosition = (ball.x + ball.w / 2 - paddle.x) / paddle.w * 2 - 1;
-            float prevVelocity = fabs(ballVelocity.x) + fabs(ballVelocity.y);
+            // Расчет точки удара [-0.5, 0.5]
+            float hitPosition = (ball.x + ball.w / 2 - paddle.x) / paddle.w - 0.5f;
+            float prevVelocity = sqrtf(ballVelocity.x * ballVelocity.x + ballVelocity.y * ballVelocity.y);
             ballVelocity.x = hitPosition * prevVelocity;
-            ballVelocity.y = -(1 - fabs(hitPosition)) * prevVelocity;
+            ballVelocity.y = -sqrtf(prevVelocity * prevVelocity - ballVelocity.x * ballVelocity.x);
         }
         else {
             ballSticked = true;
