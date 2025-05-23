@@ -443,6 +443,8 @@ void Game::ProcessInput() {
                 else if (ballSticked && event.key.key == SDLK_SPACE) {
                     ballSticked = false;
                     ballVelocity = {0, -BASE_BALL_SPEED * ballSpeedMultiplier};
+                } else if (event.key.key == SDLK_ESCAPE) {
+                    isRunning=false;
                 }
                 break;
 
