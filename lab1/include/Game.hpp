@@ -2,8 +2,11 @@
 #include <SDL3/SDL.h>
 #include <vector>
 #include <memory>
+
+#include "Ball.hpp"
 #include "Block.hpp"
-#include "Bonus.hpp"
+#include "Paddle.hpp"
+#include "bonuses/Bonus.hpp"
 
 class Game {
 public:
@@ -12,7 +15,6 @@ public:
 
     bool Initialize();
     void Run();
-    void ActivateBonus(BonusType type);
     void ResetGame();
 
 private:
@@ -23,7 +25,7 @@ private:
     void Render();
     void CheckCollisions();
     void HandleBallBlockCollision(Block& block);
-    void SpawnBonus(float x, float y, BonusType type);
+    void SpawnBonus(float x, float y);
     void HandleBlockHit(Block& block);
 
     SDL_Window* window;
@@ -32,23 +34,13 @@ private:
     bool needsReset;
 
     // Game objects
-    SDL_FRect paddle;
-    SDL_FRect ball;
-    SDL_FPoint ballVelocity;
+    Paddle paddle;
+    Ball ball;
 
     std::vector<std::unique_ptr<Block>> blocks;
     std::vector<std::unique_ptr<Bonus>> activeBonuses;
 
-    // Game state
-    int score;
-    int lives;
-    bool stickyPaddle;
-    bool safetyNetActive;
-    bool ballSticked = false;
-    float paddleSpeedMultiplier;
-    float ballSpeedMultiplier;
-    const float maxBallSpeed = 500; // Максимальная скорость мяча
-    const float ballRadius = ball.w / 2.0f; // Радиус для точных расчетов
-    Uint64 safetyNetExpireTime = 0;
-    Uint64 stickyPaddleExpireTime = 0;
+
+    GameState state{};
+    static constexpr GameState DEFAULT_STATE{};
 };

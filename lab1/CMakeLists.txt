@@ -16,7 +16,13 @@ add_executable(arkanoid
         src/main.cpp
         src/Game.cpp
         src/Block.cpp
-        src/Bonus.cpp
+        src/bonuses/Bonus.cpp
+        src/bonuses/AccelerateBallBonus.cpp
+        src/bonuses/ExpandPaddleBonus.cpp
+        src/bonuses/RandomBallDirectionBonus.cpp
+        src/bonuses/SafetyNetBonus.cpp
+        src/bonuses/ShrinkPaddleBonus.cpp
+        src/bonuses/StickyPaddleBonus.cpp
 )
 
 target_include_directories(arkanoid PRIVATE include)

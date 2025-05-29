@@ -1,16 +1,21 @@
 #include "Block.hpp"
 
-Block::Block(float x, float y, float w, float h, int hp, bool indestruct, bool accelerateBall, BonusType bonusType) :
+Block::Block(float x, float y, float w, float h, int hp, bool indestruct, bool accelerateBall, Bonus* bonus) :
     rect{x, y, w, h},
     health(hp),
     indestructible(indestruct),
     accelerateBall(accelerateBall),
-    bonus(bonusType),
-    hasBonus(bonusType != BonusType::None),
-    color{128, 128, 128, 255} {}
+    color{128, 128, 128, 255},
+    innerBonus(bonus) {}
 
-void Block::Hit() {
-    if (!indestructible) health--;
+void Block::hit(GameState& gameState, SDL_FRect& collisionResult) {
+    if (!indestructible) {
+        health--;
+        gameState.score++;
+    }
+    if (accelerateBall) {
+        gameState.ballSpeedMultiplier *= ACCELERATION_BLOCK_MULTIPLIER;
+    }
 }
 
 bool Block::IsDestroyed() const {
