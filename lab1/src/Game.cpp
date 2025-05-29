@@ -1,22 +1,9 @@
 #include "Game.hpp"
-
+#include "Gem.hpp"
+#include "Bonus.hpp"
 #include <iostream>
 #include <random>
-#include <bits/uniform_int_dist.h>
-
-#include "Colors.hpp"
-#include "SDL3/SDL_init.h"
-#include "SDL3/SDL_log.h"
-#include "SDL3/SDL_timer.h"
-
-constexpr int SCREEN_WIDTH = 800;
-constexpr int SCREEN_HEIGHT = 600;
-constexpr int GEM_WIDTH = 40;
-constexpr int GEM_HEIGHT = 40;
-constexpr int TOTAL_GEMS = SCREEN_WIDTH * SCREEN_HEIGHT / GEM_WIDTH / GEM_HEIGHT;
-constexpr int LINE_LENGTH = SCREEN_WIDTH / GEM_WIDTH;
-constexpr int ROWS = SCREEN_HEIGHT / GEM_HEIGHT;
-
+#include <algorithm>
 
 Game::Game() {
     field.reserve(TOTAL_GEMS);
@@ -28,20 +15,14 @@ bool Game::Initialize() {
         return false;
     }
 
-    // Создание окна
-    window = SDL_CreateWindow("Gems",
-                              SCREEN_WIDTH,
-                              SCREEN_HEIGHT,
-                              SDL_WINDOW_RESIZABLE);
+    window = SDL_CreateWindow("Gems", SCREEN_WIDTH, SCREEN_HEIGHT, SDL_WINDOW_RESIZABLE);
     if (!window) {
         SDL_Log("Failed to create window: %s", SDL_GetError());
         SDL_Quit();
         return false;
     }
 
-    // Создание рендерера
-    renderer = SDL_CreateRenderer(window,
-                                  nullptr);
+    renderer = SDL_CreateRenderer(window, nullptr);
     if (!renderer) {
         SDL_Log("Failed to create renderer: %s", SDL_GetError());
         SDL_DestroyWindow(window);
@@ -50,49 +31,47 @@ bool Game::Initialize() {
     }
 
     InitField();
-    SDL_SetRenderDrawBlendMode(renderer,SDL_BLENDMODE_BLEND);
-
+    SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
     return true;
 }
 
 int getRandomInt(int start, int end) {
-    static std::random_device rd; // Seed for random number engine
-    static std::mt19937 gen(rd()); // Mersenne Twister engine
-
+    static std::random_device rd;
+    static std::mt19937 gen(rd());
     std::uniform_int_distribution<int> dist(start, end - 1);
     return dist(gen);
 }
 
 bool operator==(const SDL_Color& a, const SDL_Color& b) {
-    if (a.r != b.r || a.g != b.g || a.b != b.b || a.a != b.a) return false;
-    return true;
+    return a.r == b.r && a.g == b.g && a.b == b.b && a.a == b.a;
 }
 
 bool Game::canPlace(size_t i, SDL_Color src) const {
-    if (i >= 2 * LINE_LENGTH)
-        if (field[i - LINE_LENGTH].color == src && field[i - 2 * LINE_LENGTH].color == src)
+    if (i >= 2 * LINE_LENGTH) {
+        auto gem1 = std::dynamic_pointer_cast<Gem>(field[i - LINE_LENGTH]);
+        auto gem2 = std::dynamic_pointer_cast<Gem>(field[i - 2 * LINE_LENGTH]);
+        if (gem1 && gem2 && gem1->color == src && gem2->color == src)
             return false;
+    }
 
-    if (i % LINE_LENGTH >= 2)
-        if (field[i - 1].color == src && field[i - 2].color == src)
+    if (i % LINE_LENGTH >= 2) {
+        auto gem1 = std::dynamic_pointer_cast<Gem>(field[i - 1]);
+        auto gem2 = std::dynamic_pointer_cast<Gem>(field[i - 2]);
+        if (gem1 && gem2 && gem1->color == src && gem2->color == src)
             return false;
+    }
     return true;
 }
 
-
 void Game::InitField() {
     for (int i = 0; i < TOTAL_GEMS; i++) {
-        Gem gem;
         auto color = PALETTE[getRandomInt(0, PALETTE_SIZE)];
         while (!canPlace(i, color)) {
             color = PALETTE[getRandomInt(0, PALETTE_SIZE)];
         }
-
-        gem.color = color;
-        field.emplace_back(gem);
+        field.push_back(std::make_shared<Gem>(color));
     }
 }
-
 
 void Game::Run() {
     while (!shouldExit) {
@@ -116,8 +95,10 @@ void Game::ProcessInput() {
 }
 
 bool isNeighbours(size_t a, size_t b) {
-    if (a - b == 1 || a - b == -1) return true;
-    if (a - b == LINE_LENGTH || a - b == -LINE_LENGTH) return true;
+    if (a == b) return false;
+    if (a > b) std::swap(a, b);
+    if (b - a == 1 && a % LINE_LENGTH != LINE_LENGTH-1) return true;
+    if (b - a == LINE_LENGTH) return true;
     return false;
 }
 
@@ -132,18 +113,13 @@ void Game::HandleClick(const SDL_MouseButtonEvent& e) {
 
     size_t clicked = x + y * LINE_LENGTH;
     if (selectedGem != -1 && isNeighbours(selectedGem, clicked)) {
-        //change gems
-        auto tmp = field[selectedGem];
-        field[selectedGem] = field[clicked];
-        field[clicked] = tmp;
-
-        //unselect
+        std::swap(field[selectedGem], field[clicked]);
         selectedGem = -1;
     }
-    //otherwise, change selection to clicked gem
-    else selectedGem = clicked;
+    else {
+        selectedGem = clicked;
+    }
 }
-
 
 void Game::Render() const {
     SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
@@ -153,49 +129,29 @@ void Game::Render() const {
         int gemX = i % LINE_LENGTH;
         int gemY = i / LINE_LENGTH;
 
-        SDL_FRect gem{
-                static_cast<float>(gemX * GEM_WIDTH), static_cast<float>(gemY * GEM_HEIGHT),
-                GEM_WIDTH, GEM_HEIGHT
-            };
+        SDL_FRect gemRect{
+            static_cast<float>(gemX * GEM_WIDTH),
+            static_cast<float>(gemY * GEM_HEIGHT),
+            static_cast<float>(GEM_WIDTH),
+            static_cast<float>(GEM_HEIGHT)
+        };
 
-        const SDL_Color& color = field[i].color;
-
-        SDL_SetRenderDrawColor(renderer,
-                               color.r, color.g, color.b, color.a);
-        SDL_RenderFillRect(renderer, &gem);
+        field[i]->Draw(renderer, gemRect);
     }
 
-    //render bonuses
-    for (const auto& bonus : bonuses) {
-        int x = bonus.i % LINE_LENGTH;
-        int y = bonus.i / LINE_LENGTH;
-        const SDL_Color& color = Bonus::getColor(bonus.t);
-
-        SDL_SetRenderDrawColor(renderer,
-                               color.r, color.g, color.b, color.a);
-
-        SDL_FRect f{
-                float(x * GEM_WIDTH + GEM_WIDTH / 8 * 3),
-                float(y * GEM_HEIGHT + GEM_HEIGHT / 8 * 3),
-                GEM_WIDTH / 4, GEM_HEIGHT / 4
-            };
-
-        SDL_RenderFillRect(renderer, &f);
-    }
-
-    //outline selected gem
-    if (selectedGem != -1) {
-        size_t gemX = selectedGem % LINE_LENGTH;
-        size_t gemY = selectedGem / LINE_LENGTH;
-        SDL_FRect gem{
-                static_cast<float>(gemX * GEM_WIDTH), static_cast<float>(gemY * GEM_HEIGHT),
-                GEM_WIDTH, GEM_HEIGHT
-            };
+    if (selectedGem != -1 && selectedGem < field.size()) {
+        int gemX = selectedGem % LINE_LENGTH;
+        int gemY = selectedGem / LINE_LENGTH;
+        SDL_FRect gemRect{
+            static_cast<float>(gemX * GEM_WIDTH),
+            static_cast<float>(gemY * GEM_HEIGHT),
+            static_cast<float>(GEM_WIDTH),
+            static_cast<float>(GEM_HEIGHT)
+        };
         SDL_SetRenderDrawColor(renderer, 255, 255, 255, 96);
-        SDL_RenderFillRect(renderer, &gem);
-
+        SDL_RenderFillRect(renderer, &gemRect);
         SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
-        SDL_RenderRect(renderer, &gem);
+        SDL_RenderRect(renderer, &gemRect);
     }
 
     SDL_RenderPresent(renderer);
@@ -204,142 +160,141 @@ void Game::Render() const {
 bool Game::CheckTriplets() {
     bool located = false;
     for (int i = 2; i < TOTAL_GEMS; i++) {
-        const auto& src = field[i].color;
+        auto gem_i = std::dynamic_pointer_cast<Gem>(field[i]);
+        if (!gem_i) continue;
 
-        if (i >= 2 * LINE_LENGTH &&
-            field[i - LINE_LENGTH].color == src && field[i - 2 * LINE_LENGTH].color == src) {
-            //located vertical triplet
-            located = true;
+        const auto& src = gem_i->color;
 
-            int additional = 1;
-            while (i + additional * LINE_LENGTH < TOTAL_GEMS && field[i + additional * LINE_LENGTH].color == src)
-                additional++;
-            additional--;
+        // Проверка вертикальных троек
+        if (i >= 2 * LINE_LENGTH) {
+            auto gem_up1 = std::dynamic_pointer_cast<Gem>(field[i - LINE_LENGTH]);
+            auto gem_up2 = std::dynamic_pointer_cast<Gem>(field[i - 2 * LINE_LENGTH]);
+            if (gem_up1 && gem_up2 && gem_up1->color == src && gem_up2->color == src) {
+                located = true;
+                int additional = 1;
+                while (i + additional * LINE_LENGTH < TOTAL_GEMS) {
+                    auto gem_next = std::dynamic_pointer_cast<Gem>(field[i + additional * LINE_LENGTH]);
+                    if (gem_next && gem_next->color == src)
+                        additional++;
+                    else
+                        break;
+                }
+                additional--;
 
-            //move all gems in vertical downwards
-            int j = i + additional * LINE_LENGTH;
-            for (int dj = 0; dj < 3 + additional; dj++) {
-                SpawnBonus(j - dj * LINE_LENGTH);
+                // Определяем столбец
+                int col = i % LINE_LENGTH;
+                int startRow = i / LINE_LENGTH - 2; // начальная строка тройки
+                int endRow = startRow + 2 + additional; // последняя строка в цепочке
+
+                // Спавним бонусы для всех гемов в цепочке
+                for (int row = startRow; row <= endRow; row++) {
+                    int idx = col + row * LINE_LENGTH;
+                    SpawnBonus(idx);
+                }
+
+                // Количество удаляемых строк
+                int rowsToRemove = 3 + additional;
+
+                // Сдвигаем гемы в столбце сверху вниз
+                for (int row = endRow; row >= rowsToRemove; row--) {
+                    int idx = col + row * LINE_LENGTH;
+                    field[idx] = field[idx - rowsToRemove * LINE_LENGTH];
+                }
+
+                // Генерируем новые гемы наверху
+                for (int row = 0; row < rowsToRemove; row++) {
+                    int idx = col + row * LINE_LENGTH;
+                    field[idx] = std::make_shared<Gem>(PALETTE[getRandomInt(0, PALETTE_SIZE)]);
+                }
+
+                break;
             }
-            for (; j > (3 + additional) * LINE_LENGTH; j -= LINE_LENGTH) {
-                field[j] = field[j - (3 + additional) * LINE_LENGTH];
-            }
-
-            for (; j > 0; j -= LINE_LENGTH) {
-                //generate new gems
-                Gem gem;
-                auto color = PALETTE[getRandomInt(0, PALETTE_SIZE)];
-
-                gem.color = color;
-                field[j] = gem;
-            }
-            break;
         }
 
-        if (i % LINE_LENGTH >= 2 &&
-            field[i - 1].color == src && field[i - 2].color == src) {
-            //located horizontal triplet
-            located = true;
-
-            int additional = 1;
-            int endLineIndex = (i / LINE_LENGTH + 1) * LINE_LENGTH;
-            while (i + additional < endLineIndex && field[i + additional].color == src)
-                additional++;
-
-            additional--;
-
-            //move all gems from upwards
-            for (int x = i + additional; x > i - 3; x--) {
-                int j = x;
-                SpawnBonus(j);
-                for (; j > LINE_LENGTH; j -= LINE_LENGTH) {
-                    field[j] = field[j - LINE_LENGTH];
+        // Проверка горизонтальных троек
+        if (i % LINE_LENGTH >= 2) {
+            auto gem_left1 = std::dynamic_pointer_cast<Gem>(field[i - 1]);
+            auto gem_left2 = std::dynamic_pointer_cast<Gem>(field[i - 2]);
+            if (gem_left1 && gem_left2 && gem_left1->color == src && gem_left2->color == src) {
+                located = true;
+                int additional = 1;
+                int row = i / LINE_LENGTH;
+                int endLineIndex = (row + 1) * LINE_LENGTH;
+                while (i + additional < endLineIndex) {
+                    auto gem_next = std::dynamic_pointer_cast<Gem>(field[i + additional]);
+                    if (gem_next && gem_next->color == src)
+                        additional++;
+                    else
+                        break;
                 }
-                Gem gem;
-                auto color = PALETTE[getRandomInt(0, PALETTE_SIZE)];
+                additional--;
 
-                gem.color = color;
-                field[j] = gem;
+                int startCol = i % LINE_LENGTH - 2;
+                int endCol = startCol + 2 + additional;
+
+                // Спавним бонусы для всех гемов в цепочке
+                for (int col = startCol; col <= endCol; col++) {
+                    int idx = col + row * LINE_LENGTH;
+                    SpawnBonus(idx);
+                }
+
+                // Для каждого столбца в цепочке сдвигаем гемы сверху вниз
+                for (int col = startCol; col <= endCol; col++) {
+                    int idx = col + row * LINE_LENGTH;
+
+                    // Сдвигаем все гемы выше вниз на одну позицию
+                    for (int r = row; r > 0; r--) {
+                        int currentIdx = col + r * LINE_LENGTH;
+                        int aboveIdx = col + (r-1) * LINE_LENGTH;
+                        field[currentIdx] = field[aboveIdx];
+                    }
+
+                    // Генерируем новый гем наверху
+                    field[col] = std::make_shared<Gem>(PALETTE[getRandomInt(0, PALETTE_SIZE)]);
+                }
+
+                break;
             }
-            break;
         }
     }
     return located;
 }
 
 void Game::Update() {
-    RunBonuses();
+    ActivateBonuses();
     CheckTriplets();
 }
 
-void Game::RunBonuses() {
-
-    for ( const auto& bonus : bonuses) {
-        if (bonus.t == Bonus::BOMB) {
-            int x = bonus.i % LINE_LENGTH;
-            int y = bonus.i / LINE_LENGTH;
-
-            for (int i = 0; i < 4; i++) {
-                //destroy gem at (x,y)
-                int j = x + y * LINE_LENGTH;
-                for (; j > LINE_LENGTH; j -= LINE_LENGTH) {
-                    field[j] = field[j - LINE_LENGTH];
-                }
-                Gem n;
-                n.color = PALETTE[getRandomInt(0, PALETTE_SIZE)];
-                field[j] = n;
-
-
-                //generate new x,y
-                x = getRandomInt(0, LINE_LENGTH);
-                y = getRandomInt(0, ROWS);
+void Game::ActivateBonuses() {
+    for (size_t i = 0; i < field.size(); i++) {
+        if (auto gem = std::dynamic_pointer_cast<Gem>(field[i])) {
+            if (gem->HasBonus()) {
+                gem->ActivateBonus(this, i);
             }
         }
-        else if (bonus.t == Bonus::RECOLOR) {
-            constexpr int RECOLOR_RADIUS = 2;
-            auto src_color = field[bonus.i].color;
-            field[bonus.i].color = PALETTE[getRandomInt(0, PALETTE_SIZE)];
-
-            int x = bonus.i % LINE_LENGTH;
-            int y = bonus.i / LINE_LENGTH;
-
-            int x1 = getRandomInt(std::max(0, x - RECOLOR_RADIUS), std::min(x + RECOLOR_RADIUS, LINE_LENGTH));
-            int y1 = getRandomInt(std::max(0, y - RECOLOR_RADIUS), std::min(y + RECOLOR_RADIUS, ROWS));
-
-            size_t i1 = x1 + y1 * LINE_LENGTH;
-
-            while (isNeighbours(bonus.i, i1)) {
-                x1 = getRandomInt(std::max(0, x - RECOLOR_RADIUS), std::min(x + RECOLOR_RADIUS, LINE_LENGTH));
-                y1 = getRandomInt(std::max(0, y - RECOLOR_RADIUS), std::min(y + RECOLOR_RADIUS, ROWS));
-                i1 = x1 + y1 * LINE_LENGTH;
-            }
-
-            field[i1].color = src_color;
-        }
-
     }
-
-    bonuses.clear();
 }
-
 
 void Game::SpawnBonus(size_t destroyed) {
     constexpr float SPAWN_CHANCE = 0.5;
+    if (static_cast<float>(getRandomInt(0, 101)) / 100 > SPAWN_CHANCE) return;
+
     constexpr int SPAWN_RADIUS = 3;
-    if (static_cast<float>(getRandomInt(0, 101)) / 100 > SPAWN_CHANCE) {
-        //do spawn
+    int x = destroyed % LINE_LENGTH;
+    int y = destroyed / LINE_LENGTH;
 
-        int x = destroyed % LINE_LENGTH;
-        int y = destroyed / LINE_LENGTH;
+    int xNew = getRandomInt(std::max(0, x - SPAWN_RADIUS), std::min(LINE_LENGTH, x + SPAWN_RADIUS));
+    int yNew = getRandomInt(std::max(0, y - SPAWN_RADIUS), std::min(ROWS, y + SPAWN_RADIUS));
+    size_t idx = xNew + yNew * LINE_LENGTH;
 
-        int xNew = getRandomInt(std::max(0, x - SPAWN_RADIUS),
-                                std::min(LINE_LENGTH, x + SPAWN_RADIUS));
-        int yNew = getRandomInt(std::max(0, y - SPAWN_RADIUS),
-                                std::min(ROWS, y + SPAWN_RADIUS));
-
-        bonuses.emplace_back(
-            xNew + yNew * LINE_LENGTH,
-            static_cast<Bonus::BonusType>(getRandomInt(0, Bonus::BonusType::SIZE))
-        );
+    if (idx >= field.size()) return;
+    if (auto gem = std::dynamic_pointer_cast<Gem>(field[idx])) {
+        std::unique_ptr<Bonus> bonus;
+        if (getRandomInt(0, 2) == 0) {
+            bonus = std::make_unique<RecolorBonus>();
+        } else {
+            bonus = std::make_unique<BombBonus>();
+        }
+        gem->SetBonus(std::move(bonus));
     }
 }

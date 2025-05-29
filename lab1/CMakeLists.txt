@@ -15,6 +15,8 @@ FetchContent_MakeAvailable(SDL3)
 add_executable(gems
         src/main.cpp
         src/Game.cpp
+        src/Gem.cpp
+        src/Bonus.cpp
 )
 
 target_include_directories(gems PRIVATE include)

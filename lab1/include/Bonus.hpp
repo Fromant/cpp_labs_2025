@@ -1,19 +1,23 @@
 #pragma once
-#include "SDL3/SDL_pixels.h"
+#include "GameObject.hpp"
+#include <memory>
 
-struct Bonus {
-    enum BonusType {
-        RECOLOR, BOMB, SIZE
-    };
+enum class BonusType { RECOLOR, BOMB };
 
-    size_t i;
-    BonusType t;
-    Bonus() = default;
-    Bonus(int i, BonusType bonus) : i(i), t(bonus) {}
+class Bonus : public GameObject {
+public:
+    virtual void Activate(class Game* game, size_t index) = 0;
+    virtual ~Bonus() = default;
+};
 
-    static SDL_Color getColor(BonusType t) {
-        if (t == RECOLOR) return SDL_Color{0, 0, 255, 255};
-        if (t == BOMB) return SDL_Color{255, 0, 0, 255};
-        return {0, 0, 0, 0};
-    }
+class RecolorBonus : public Bonus {
+public:
+    void Draw(SDL_Renderer* renderer, const SDL_FRect& rect) const override;
+    void Activate(class Game* game, size_t index) override;
+};
+
+class BombBonus : public Bonus {
+public:
+    void Draw(SDL_Renderer* renderer, const SDL_FRect& rect) const override;
+    void Activate(class Game* game, size_t index) override;
 };
