@@ -43,10 +43,15 @@ void PluginManager::loadPluginsFromDirectory(const std::string& dirPath) {
             }
             std::string name(name_cstr);
 
-            // Wrap C function into std::function with exception safety
+            //capture function and name by value
             auto wrapper = [evaluate, name](double x) -> double {
-                // We assume evaluate may throw; we let it propagate
-                return evaluate(x);
+                try {
+                    return evaluate(x);
+                }
+                catch (std::exception& e) {
+                    // throw exception with additional data for debugging
+                    throw std::runtime_error("Error evaluating function " + name + ": " + e.what());
+                }
             };
 
             auto handle = std::make_unique<PluginHandle>(hmod);
@@ -55,9 +60,10 @@ void PluginManager::loadPluginsFromDirectory(const std::string& dirPath) {
             functions.emplace(name, wrapper);
 
             std::cout << "Loaded function: " << name << " from " << entry.path().filename().string() << std::endl;
-        } catch (const std::exception& e) {
+        }
+        catch (const std::exception& e) {
             std::cerr << "Error initializing plugin " << entry.path().filename().string()
-                      << ": " << e.what() << std::endl;
+                << ": " << e.what() << std::endl;
             FreeLibrary(hmod);
         }
     }
