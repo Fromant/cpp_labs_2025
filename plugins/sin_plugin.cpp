@@ -1,11 +1,15 @@
 #include <cmath>
-#include <stdexcept>
+#include "../src/plugin_interface.h"
 
-extern "C" __declspec(dllexport) const char* get_function_name() {
-    return "sin";
+struct FunctionInfo;
+
+static double sin_eval(const double* args, size_t count) {
+    if (count != 1) return 0.0;
+    return std::sin(args[0]);
 }
 
-extern "C" __declspec(dllexport) double evaluate(double x) {
-    // sin expects radians
-    return std::sin(x);
-}
+static const FunctionInfo info = {
+    "sin", 1, 90, Associativity::Left, false, sin_eval
+};
+
+PLUGIN_API const FunctionInfo* get_function_info() { return &info; }

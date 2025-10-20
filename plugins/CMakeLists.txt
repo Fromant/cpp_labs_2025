@@ -11,14 +11,11 @@ endif()
 set(PLUGIN_TARGETS "")
 
 foreach(source_file IN LISTS PLUGIN_SOURCES)
-    # Get filename without path and extension: "sin_plugin.cpp" -> "sin_plugin"
+    # Get filename without path and extension
     get_filename_component(plugin_name ${source_file} NAME_WE)
 
     # Create a shared library (DLL) for each plugin
     add_library(${plugin_name} SHARED ${source_file})
-
-    # Ensure C++17 (or your chosen standard)
-    target_compile_features(${plugin_name} PRIVATE cxx_std_17)
 
     set_target_properties(${plugin_name} PROPERTIES
             PREFIX ""           # No "lib" prefix on Windows

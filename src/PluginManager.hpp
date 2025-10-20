@@ -3,32 +3,39 @@
 #include <string>
 #include <functional>
 #include <map>
-#include <memory>
+
+#include "plugin_interface.h"
 
 #ifdef _WIN32
-    #include <windows.h>
+#include <windows.h>
 #else
     #error "Only Windows is supported for plugins (DLLs)"
 #endif
 
+struct FunctionInfo;
+
 using FunctionMap = std::map<std::string, std::function<double(double)>>;
 
 class PluginManager {
-    struct PluginHandle {
-        HMODULE module;
-        std::function<double(double)> func;
-        PluginHandle(HMODULE m) : module(m) {}
-        ~PluginHandle() { if (module) FreeLibrary(module); }
-        PluginHandle(const PluginHandle&) = delete;
-        PluginHandle& operator=(const PluginHandle&) = delete;
+public:
+    struct RegisteredFunction {
+        int arity;
+        int precedence;
+        bool is_operator;
+        Associativity associativity;
+        double (*evaluate)(const double*, size_t);
     };
 
-    std::map<std::string, std::unique_ptr<PluginHandle>> plugins;
-    FunctionMap functions;
-
-public:
-    void loadPluginsFromDirectory(const std::string& dirPath);
-    const FunctionMap& getFunctions() const { return functions; }
+    PluginManager();
     ~PluginManager();
-};
 
+    void loadPlugins();
+    bool hasFunction(const std::string& name) const;
+    const RegisteredFunction& getFunction(const std::string& name) const;
+
+private:
+    void loadPlugin(const std::string& path);
+    std::unordered_map<std::string, RegisteredFunction> registry_;
+
+    std::vector<void*> handles_; // HMODULE
+};
