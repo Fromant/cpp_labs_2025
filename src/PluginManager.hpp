@@ -24,7 +24,7 @@ public:
 private:
     void loadPlugins();
     void loadPlugin(const std::string& path);
-    static static void validatePlugin(FunctionInfo const* info);
+    static void validatePlugin(FunctionInfo const* info);
 
     std::unordered_map<std::string, TokenInfo> registry_;
 
