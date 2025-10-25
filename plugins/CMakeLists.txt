@@ -3,6 +3,10 @@ cmake_minimum_required(VERSION 3.14)
 # Automatically find all .cpp files in this directory
 file(GLOB PLUGIN_SOURCES CONFIGURE_DEPENDS "*.cpp")
 
+if (WIN32)
+    set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS ON)
+endif ()
+
 if(NOT PLUGIN_SOURCES)
     message(STATUS "No plugin sources found in ${CMAKE_CURRENT_SOURCE_DIR}")
     return()

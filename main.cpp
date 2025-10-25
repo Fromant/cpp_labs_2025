@@ -1,7 +1,7 @@
 #include <iostream>
 #include <string>
 
-#include "Calculator.hpp"
+#include "src/Calculator.hpp"
 
 int main() {
     try {
