@@ -1,77 +1,63 @@
-#include <vector>
+#include "Tokenizer.hpp"
+
 #include <cctype>
 #include <stdexcept>
-#include <string>
 
-#include "Token.hpp"
-
-std::vector<Token> tokenize(const std::string& input) {
+std::vector<Token> tokenize(const std::string& expr) {
     std::vector<Token> tokens;
     size_t i = 0;
 
-    auto skipWhitespace = [&]() {
-        while (i < input.size() && std::isspace(static_cast<unsigned char>(input[i]))) ++i;
+    auto skipSpaces = [&]() {
+        while (i < expr.size() && std::isspace(static_cast<unsigned char>(expr[i]))) ++i;
     };
 
-    while (i < input.size()) {
+    auto isDigit = [](char c) { return std::isdigit(static_cast<unsigned char>(c)) || c == '.'; };
 
-        skipWhitespace();
+    while (i < expr.size()) {
+        skipSpaces();
+        if (i >= expr.size()) break;
 
-        if (i >= input.size()) break;
-        char c = input[i];
+        char c = expr[i];
 
-        if (std::isdigit(c) || c == '.') {
-            // Parse number: supports 123, 12.34, .5, 1e-3 etc.
+        // Numbers
+        if (isDigit(c)) {
             size_t start = i;
-            while (i < input.size() && (std::isdigit(input[i]) ||
-                   input[i] == '.' || input[i] == 'e' || input[i] == 'E' ||
-                   input[i] == '+' || input[i] == '-')) {
-                // Allow +/- only after 'e' or 'E'
-                if ((input[i] == '+' || input[i] == '-') && i > start &&
-                    (input[i-1] == 'e' || input[i-1] == 'E')) {
-                    ++i;
-                } else if (std::isdigit(input[i]) ||
-                           input[i] == '.' || input[i] == 'e' || input[i] == 'E') {
-                    ++i;
-                } else {
-                    break;
-                }
-            }
-            std::string numStr = input.substr(start, i - start);
+            while (i < expr.size() && isDigit(expr[i])) ++i;
+            std::string numStr = expr.substr(start, i - start);
             try {
-                size_t pos;
-                double val = std::stod(numStr, &pos);
-                if (pos != numStr.size()) {
-                    throw std::invalid_argument("Invalid number");
-                }
-                tokens.emplace_back(Token::TokenType::NUMBER, numStr, val);
+                double val = std::stod(numStr);
+                tokens.push_back({Token::TokenType::NUMBER, numStr, val});
             } catch (...) {
-                throw std::runtime_error("Invalid number at position " + std::to_string(start));
+                throw std::runtime_error("Invalid number: " + numStr);
             }
         }
-        else if (c == '+' || c == '-' || c == '*' || c == '/') {
-            tokens.emplace_back(Token::TokenType::OPERATOR, c);
-            ++i;
-        }
+        // Parentheses and comma
         else if (c == '(') {
-            tokens.emplace_back(Token::TokenType::LPAREN);
+            tokens.push_back({Token::TokenType::LPAREN, "("});
+            ++i;
+        } else if (c == ')') {
+            tokens.push_back({Token::TokenType::RPAREN, ")"});
+            ++i;
+        } else if (c == ',') {
+            tokens.push_back({Token::TokenType::COMMA, ","});
             ++i;
         }
-        else if (c == ')') {
-            tokens.emplace_back(Token::TokenType::RPAREN);
-            ++i;
-        }
-        else if (std::isalpha(c)) {
-            // Parse function name: [a-zA-Z_][a-zA-Z0-9_]*
-            size_t start = i;
-            while (i < input.size() && (std::isalnum(input[i]) || input[i] == '_')) {
-                ++i;
-            }
-            std::string name = input.substr(start, i - start);
-            tokens.emplace_back(Token::TokenType::FUNCTION, name);
-        }
+        // Everything else: treat as identifier (including +, -, *, /, ^, @, etc.)
         else {
-            throw std::runtime_error("Unexpected character: '" + std::string(1, c) + "'");
+            size_t start = i;
+            // Take **one character** as identifier (for symbols like +, ^)
+            // But allow multi-char names like "sin", "max"
+            if (!std::isalpha(c) && c != '_') {
+                // Single-symbol token (e.g. '+', '^', '@')
+                tokens.push_back({Token::TokenType::IDENTIFIER, std::string(1, c)});
+                ++i;
+            } else {
+                // Multi-character identifier (e.g. "sin", "log")
+                while (i < expr.size() && (std::isalnum(static_cast<unsigned char>(expr[i])) || expr[i] == '_')) {
+                    ++i;
+                }
+                tokens.push_back({Token::TokenType::IDENTIFIER, expr.substr(start, i - start)});
+            }
         }
     }
 

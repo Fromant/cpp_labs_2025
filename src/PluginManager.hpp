@@ -2,40 +2,31 @@
 
 #include <string>
 #include <functional>
-#include <map>
 
 #include "plugin_interface.h"
 
-#ifdef _WIN32
-#include <windows.h>
-#else
-    #error "Only Windows is supported for plugins (DLLs)"
-#endif
-
-struct FunctionInfo;
-
-using FunctionMap = std::map<std::string, std::function<double(double)>>;
-
 class PluginManager {
 public:
-    struct RegisteredFunction {
+    struct TokenInfo {
         int arity;
         int precedence;
-        bool is_operator;
         Associativity associativity;
+        bool is_operator;
         double (*evaluate)(const double*, size_t);
     };
 
     PluginManager();
     ~PluginManager();
 
-    void loadPlugins();
-    bool hasFunction(const std::string& name) const;
-    const RegisteredFunction& getFunction(const std::string& name) const;
+    bool hasToken(const std::string& name) const;
+    const TokenInfo& getTokenInfo(const std::string& name) const;
 
 private:
+    void loadPlugins();
     void loadPlugin(const std::string& path);
-    std::unordered_map<std::string, RegisteredFunction> registry_;
+    void validatePlugin(FunctionInfo const* info);
 
-    std::vector<void*> handles_; // HMODULE
+    std::unordered_map<std::string, TokenInfo> registry_;
+
+    std::vector<void*> handles_;
 };
