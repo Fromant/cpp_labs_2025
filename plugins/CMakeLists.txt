@@ -20,6 +20,7 @@ foreach(source_file IN LISTS PLUGIN_SOURCES)
     set_target_properties(${plugin_name} PROPERTIES
             PREFIX ""           # No "lib" prefix on Windows
             OUTPUT_NAME "${plugin_name}"  # Explicit name
+            ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/static_plugins  # optional: control where .a goes
     )
 
     list(APPEND PLUGIN_TARGETS ${plugin_name})
