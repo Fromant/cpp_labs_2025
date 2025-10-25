@@ -3,7 +3,7 @@
 #include <stdexcept>
 
 
-double evaluateRpn(const std::vector<Token>& rpn, const PluginManager& pm) {
+double evaluateRpn(const std::vector<Token>& rpn, const IPluginRegistry& pm) {
     std::stack<double> values;
 
     for (const auto& token : rpn) {

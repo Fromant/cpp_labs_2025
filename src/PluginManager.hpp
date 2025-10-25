@@ -3,23 +3,18 @@
 #include <string>
 #include <functional>
 
+#include "IPluginRegistry.hpp"
 #include "plugin_interface.h"
 
-class PluginManager {
+class PluginManager : public IPluginRegistry{
 public:
-    struct TokenInfo {
-        int arity;
-        int precedence;
-        Associativity associativity;
-        bool is_operator;
-        double (*evaluate)(const double*, size_t);
-    };
+    using IPluginRegistry::TokenInfo;  // reuse nested type
 
     PluginManager();
-    ~PluginManager();
+    ~PluginManager() override;
 
-    bool hasToken(const std::string& name) const;
-    const TokenInfo& getTokenInfo(const std::string& name) const;
+    bool hasToken(const std::string& name) const final;
+    const TokenInfo& getTokenInfo(const std::string& name) const final;
 
 private:
     void loadPlugins();

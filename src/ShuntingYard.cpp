@@ -3,7 +3,7 @@
 #include <stack>
 #include <stdexcept>
 
-std::vector<Token> shuntingYard(const std::vector<Token>& tokens, const PluginManager& pm) {
+std::vector<Token> shuntingYard(const std::vector<Token>& tokens, const IPluginRegistry& pm) {
     std::stack<Token> ops;
     std::vector<Token> output;
 
