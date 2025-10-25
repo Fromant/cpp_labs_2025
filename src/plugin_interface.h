@@ -1,5 +1,7 @@
 #pragma once
 
+#include <cstddef>
+
 #ifdef _WIN32
 #  define PLUGIN_API extern "C" __declspec(dllexport)
 #else
