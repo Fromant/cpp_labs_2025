@@ -60,7 +60,7 @@ void PluginManager::loadPlugins() {
     }
 
     for (const auto& entry : fs::directory_iterator(pluginDir)) {
-        if (entry.path().extension() == ".dll") {
+        if (entry.path().extension() == PLUGIN_EXT) {
             try {
                 loadPlugin(entry.path().string());
             }
