@@ -4,10 +4,25 @@
 #include <stdexcept>
 #include <set>
 
+// Platform-specific includes
 #ifdef _WIN32
 #include <windows.h>
+#define DLOPEN(filename)    LoadLibraryA(filename)
+#define DLSYM(handle, sym)  GetProcAddress((HMODULE)handle, sym)
+#define DLCLOSE(handle)     FreeLibrary((HMODULE)handle)
+#define DLERROR()           "LoadLibrary/GetProcAddress failed"
+const char* PLUGIN_EXT = ".dll";
 #else
-#error "Windows only"
+#include <dlfcn.h>
+#define DLOPEN(filename)    dlopen(filename, RTLD_NOW)
+#define DLSYM(handle, sym)  dlsym(handle, sym)
+#define DLCLOSE(handle)     dlclose(handle)
+#define DLERROR()           dlerror()
+#ifdef __APPLE__
+const char* PLUGIN_EXT = ".dylib";
+#else
+const char* PLUGIN_EXT = ".so";
+#endif
 #endif
 
 void PluginManager::validatePlugin(FunctionInfo const* info) {
@@ -33,7 +48,7 @@ PluginManager::PluginManager() {
 
 PluginManager::~PluginManager() {
     for (void* h : handles_) {
-        FreeLibrary(static_cast<HMODULE>(h));
+        if (h) DLCLOSE(h);
     }
 }
 
@@ -62,7 +77,7 @@ void PluginManager::loadPlugins() {
 }
 
 void PluginManager::loadPlugin(const std::string& path) {
-    HMODULE handle = LoadLibraryA(path.c_str());
+    HMODULE handle = DLOPEN(path.c_str());
     if (!handle) {
         throw std::runtime_error("LoadLibrary failed");
     }
@@ -70,11 +85,11 @@ void PluginManager::loadPlugin(const std::string& path) {
     // typedef const FunctionInfo* (*GetInfoFunc)();
     using GetInfoFunc = FunctionInfo*(*)();
     auto getInfo = reinterpret_cast<GetInfoFunc>(
-        GetProcAddress(handle, "get_function_info")
+        DLSYM(handle, "get_function_info")
     );
 
     if (!getInfo) {
-        FreeLibrary(handle);
+        DLCLOSE(handle);
         throw std::runtime_error("Symbol 'get_function_info' not found");
     }
 
