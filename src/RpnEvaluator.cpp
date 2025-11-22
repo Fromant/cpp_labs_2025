@@ -21,8 +21,11 @@ double evaluateRpn(const std::vector<Token>& rpn, const IPluginRegistry& pm) {
                 values.pop();
             }
 
-            double result = info.evaluate(args.data(), args.size());
-            values.push(result);
+            PluginResult result = info.evaluate(args.data(), args.size());
+            if (result.error != nullptr) {
+                throw std::runtime_error("Error: " + token.lexeme + result.error);
+            }
+            values.push(result.value);
         }
     }
 

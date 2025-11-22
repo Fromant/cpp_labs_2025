@@ -1,6 +1,6 @@
 #pragma once
 
-#include <cstddef>
+#include <cstddef> //for size_t
 
 #ifdef _WIN32
 #  define PLUGIN_API extern "C" __declspec(dllexport)
@@ -8,18 +8,25 @@
 #error "Only windows supported"
 #endif
 
-enum class Associativity {
-    Left,
-    Right
-};
+extern "C" {
+    enum class Associativity {
+        Left,
+        Right
+    };
 
-struct FunctionInfo {
-    const char* name;
-    int arity;
-    int precedence;
-    Associativity associativity;
-    bool is_operator;
-    double (*evaluate)(const double* args, size_t count);
-};
+    struct PluginResult {
+        double value;
+        const char* error;
+    };
 
-PLUGIN_API const FunctionInfo* get_function_info();
+    struct FunctionInfo {
+        const char* name;
+        int arity;
+        int precedence;
+        Associativity associativity;
+        bool is_operator;
+        PluginResult (*evaluate)(const double* args, size_t count);
+    };
+
+    PLUGIN_API const FunctionInfo* get_function_info();
+}

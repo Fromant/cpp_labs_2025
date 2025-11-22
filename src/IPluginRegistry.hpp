@@ -12,7 +12,7 @@ public:
         int precedence;
         Associativity associativity;
         bool is_operator;
-        double (*evaluate)(const double*, size_t);
+        PluginResult (*evaluate)(const double*, size_t);
     };
 
     virtual bool hasToken(const std::string& name) const = 0;
