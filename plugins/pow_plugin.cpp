@@ -12,7 +12,7 @@ PLUGIN_API PluginResult pow_eval(const double* args, size_t) {
 }
 
 static const FunctionInfo info = {
-    "^", ARGC, 80, Associativity::Right, true, pow_eval
+    "^", ARGC, 90, Associativity::Right, true, pow_eval
 };
 
 PLUGIN_API const FunctionInfo* get_function_info() {
