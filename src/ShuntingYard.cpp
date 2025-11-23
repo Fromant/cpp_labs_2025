@@ -1,5 +1,6 @@
 #include "ShuntingYard.hpp"
 #include <stdexcept>
+#include <vector>
 
 std::vector<Token> shuntingYard(const std::vector<Token>& tokens, const IPluginRegistry& pm) {
     std::vector<Token> output;
@@ -7,7 +8,9 @@ std::vector<Token> shuntingYard(const std::vector<Token>& tokens, const IPluginR
 
     bool expectOperand = true;
 
-    for (const auto& token : tokens) {
+    for (size_t i = 0; i < tokens.size(); ++i) {
+        const auto& token = tokens[i];
+
         if (token.type == Token::NUMBER) {
             output.push_back(token);
             expectOperand = false;
@@ -42,7 +45,7 @@ std::vector<Token> shuntingYard(const std::vector<Token>& tokens, const IPluginR
             }
             expectOperand = true;
         }
-        else if (token.type == Token::TokenType::IDENTIFIER) {
+        else if (token.type == Token::IDENTIFIER) {
             std::string name = token.lexeme;
 
             if (expectOperand) {
@@ -52,13 +55,18 @@ std::vector<Token> shuntingYard(const std::vector<Token>& tokens, const IPluginR
                     ops.push_back(t);
                 }
                 else if (pm.hasFunction(name)) {
+                    if (i + 1 >= tokens.size() || tokens[i + 1].type != Token::LPAREN) {
+                        throw std::runtime_error(
+                            "Function '" + name + "' must be called with parentheses, e.g. " + name + "(x)"
+                        );
+                    }
                     Token t = token;
                     t.type = Token::FUNCTION;
                     ops.push_back(t);
                     expectOperand = true;
                 }
                 else {
-                    throw std::runtime_error("Unexpected token at operand position: " + name);
+                    throw std::runtime_error("Unknown identifier: " + name);
                 }
             }
             else {
@@ -70,7 +78,6 @@ std::vector<Token> shuntingYard(const std::vector<Token>& tokens, const IPluginR
                 while (!ops.empty()) {
                     const Token& top = ops.back();
                     if (top.type == Token::LPAREN) break;
-
                     if (top.type != Token::BINARY_OPERATOR && top.type != Token::UNARY_OPERATOR)
                         break;
 
@@ -78,13 +85,9 @@ std::vector<Token> shuntingYard(const std::vector<Token>& tokens, const IPluginR
                                               ? &pm.getBinaryOperator(top.lexeme)
                                               : &pm.getUnaryOperator(top.lexeme);
 
-                    bool shouldPop = false;
-                    if (info.associativity == Associativity::Left) {
-                        shouldPop = (topInfo->precedence >= info.precedence);
-                    }
-                    else {
-                        shouldPop = (topInfo->precedence > info.precedence);
-                    }
+                    bool shouldPop = (info.associativity == Associativity::Left)
+                                         ? (topInfo->precedence >= info.precedence)
+                                         : (topInfo->precedence > info.precedence);
 
                     if (!shouldPop) break;
 
