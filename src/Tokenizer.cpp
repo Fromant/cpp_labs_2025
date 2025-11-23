@@ -42,17 +42,14 @@ std::vector<Token> tokenize(const std::string& expr) {
             tokens.push_back({Token::TokenType::COMMA, ","});
             ++i;
         }
-        // Everything else: treat as identifier (including +, -, *, /, ^, @, etc.)
+        // Everything else: treat as identifier
         else {
             size_t start = i;
-            // Take **one character** as identifier (for symbols like +, ^)
-            // But allow multi-char names like "sin", "max"
             if (!std::isalpha(c) && c != '_') {
-                // Single-symbol token (e.g. '+', '^', '@')
+                // Single-symbol token
                 tokens.push_back({Token::TokenType::IDENTIFIER, std::string(1, c)});
                 ++i;
             } else {
-                // Multi-character identifier (e.g. "sin", "log")
                 while (i < expr.size() && (std::isalnum(static_cast<unsigned char>(expr[i])) || expr[i] == '_')) {
                     ++i;
                 }

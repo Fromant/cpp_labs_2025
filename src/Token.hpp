@@ -7,7 +7,10 @@
 struct Token {
     enum TokenType {
         NUMBER,
-        IDENTIFIER, //operator or function
+        IDENTIFIER,
+        FUNCTION,
+        UNARY_OPERATOR,
+        BINARY_OPERATOR,
         LPAREN,
         RPAREN,
         COMMA

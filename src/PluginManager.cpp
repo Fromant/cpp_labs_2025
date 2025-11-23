@@ -71,63 +71,92 @@ void PluginManager::loadPlugins() {
         }
     }
 
-    if (registry_.empty()) {
+    if (functions_.empty() && unary_ops_.empty() && binary_ops_.empty()) {
         throw std::runtime_error("No valid plugins loaded");
     }
 }
 
 void PluginManager::loadPlugin(const std::string& path) {
-    HMODULE handle = DLOPEN(path.c_str());
+    void* handle = DLOPEN(path.c_str());
     if (!handle) {
-        throw std::runtime_error("LoadLibrary failed");
+        throw std::runtime_error("Failed to load plugin: " + path);
     }
 
-    // typedef const FunctionInfo* (*GetInfoFunc)();
     using GetInfoFunc = FunctionInfo*(*)();
-    auto getInfo = reinterpret_cast<GetInfoFunc>(
-        DLSYM(handle, "get_function_info")
-    );
-
+    auto getInfo = reinterpret_cast<GetInfoFunc>(DLSYM(handle, "get_function_info"));
     if (!getInfo) {
         DLCLOSE(handle);
-        throw std::runtime_error("Symbol 'get_function_info' not found");
+        throw std::runtime_error("Symbol 'get_function_info' not found in " + path);
     }
 
     const FunctionInfo* info = getInfo();
     if (!info || !info->name || !info->evaluate) {
-        FreeLibrary(handle);
-        throw std::runtime_error("Invalid FunctionInfo");
+        DLCLOSE(handle);
+        throw std::runtime_error("Invalid FunctionInfo from " + path);
     }
 
     validatePlugin(info);
 
     std::string name(info->name);
+    TokenInfo tokenInfo{
+        info->arity,
+        info->precedence,
+        info->associativity,
+        info->is_operator,
+        info->evaluate
+    };
 
-    // Check for duplicates
-    if (registry_.count(name)) {
-        FreeLibrary(handle);
-        throw std::runtime_error("Duplicate token name: " + name);
+    if (info->is_operator) {
+        if (info->arity == 1) {
+            if (unary_ops_.count(name)) {
+                DLCLOSE(handle);
+                throw std::runtime_error("Duplicate unary operator: " + name);
+            }
+            unary_ops_[name] = tokenInfo;
+        } else if (info->arity == 2) {
+            if (binary_ops_.count(name)) {
+                DLCLOSE(handle);
+                throw std::runtime_error("Duplicate binary operator: " + name);
+            }
+            binary_ops_[name] = tokenInfo;
+        } else {
+            DLCLOSE(handle);
+            throw std::runtime_error("Operator must have arity 1 or 2: " + name);
+        }
+    } else {
+        // function
+        if (functions_.count(name)) {
+            DLCLOSE(handle);
+            throw std::runtime_error("Duplicate function: " + name);
+        }
+        functions_[name] = tokenInfo;
     }
-
-    registry_[name] = TokenInfo{
-            info->arity,
-            info->precedence,
-            info->associativity,
-            info->is_operator,
-            info->evaluate
-        };
 
     handles_.push_back(handle);
 }
 
-bool PluginManager::hasToken(const std::string& name) const {
-    return registry_.count(name) > 0;
+bool PluginManager::hasFunction(const std::string& name) const {
+    return functions_.find(name) != functions_.end();
+}
+bool PluginManager::hasUnaryOperator(const std::string& name) const {
+    return unary_ops_.find(name) != unary_ops_.end();
+}
+bool PluginManager::hasBinaryOperator(const std::string& name) const {
+    return binary_ops_.find(name) != binary_ops_.end();
 }
 
-const PluginManager::TokenInfo& PluginManager::getTokenInfo(const std::string& name) const {
-    auto it = registry_.find(name);
-    if (it == registry_.end()) {
-        throw std::runtime_error("Unknown token: " + name);
-    }
+const PluginManager::TokenInfo& PluginManager::getFunction(const std::string& name) const {
+    auto it = functions_.find(name);
+    if (it == functions_.end()) throw std::runtime_error("Function not found: " + name);
+    return it->second;
+}
+const PluginManager::TokenInfo& PluginManager::getUnaryOperator(const std::string& name) const {
+    auto it = unary_ops_.find(name);
+    if (it == unary_ops_.end()) throw std::runtime_error("Unary operator not found: " + name);
+    return it->second;
+}
+const PluginManager::TokenInfo& PluginManager::getBinaryOperator(const std::string& name) const {
+    auto it = binary_ops_.find(name);
+    if (it == binary_ops_.end()) throw std::runtime_error("Binary operator not found: " + name);
     return it->second;
 }
