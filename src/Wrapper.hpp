@@ -20,8 +20,9 @@ class Wrapper : public WrapperBase {
     using ArgMap = std::unordered_map<std::string, std::any>;
     using Func = Ret (T::*)(Args...);
 
-    std::unique_ptr<T> _obj;
     Func _func;
+
+    std::function<T&()> _get_obj;
 
     ArgList argNames;
     std::array<std::type_index, ARG_COUNT> argTypes = {typeid(Args)...};
@@ -29,45 +30,68 @@ class Wrapper : public WrapperBase {
     template <typename R = Ret, std::size_t... Indices>
     std::enable_if_t<!std::is_void_v<R>, std::any>
     invoke_function(const std::array<std::any, ARG_COUNT>& args, std::index_sequence<Indices...>) const {
-        return ((*_obj).*_func)(std::any_cast<Args>(args[Indices])...);
+        return (_get_obj().*_func)(std::any_cast<Args>(args[Indices])...);
     }
 
     // Helper for void return
     template <typename R = Ret, std::size_t... Indices>
     std::enable_if_t<std::is_void_v<R>, std::any>
     invoke_function(const std::array<std::any, ARG_COUNT>& args, std::index_sequence<Indices...>) const {
-        (*_obj.*_func)(std::any_cast<Args>(args[Indices])...);
-        return {}; // or std::any{}
+        (_get_obj().*_func)(std::any_cast<Args>(args[Indices])...);
+        return {};
     }
 
 public:
-    Wrapper(const T& object, Func function, const ArgList& argList) :
-        _obj(std::make_unique<T>(object)), _func(function), argNames(argList) {
-        if (argList.size() != ARG_COUNT) {
+    Wrapper(T* obj, Func func, const ArgList& argList):
+        _get_obj([obj]() -> T& { return *obj; }),
+        _func(func),
+        argNames(argList) {
+        if (argList.size() != ARG_COUNT)
             throw std::invalid_argument("Wrong number of arguments");
-        }
     }
 
-    Wrapper(const Wrapper& other): _obj(std::make_unique<T>(*other._obj)), _func(other._func),
+    Wrapper(const T& obj, Func func, const ArgList& argList):
+        _get_obj([owned = T(obj)]() mutable -> T& { return owned; }),
+        _func(func),
+        argNames(argList) {
+        if (argList.size() != ARG_COUNT)
+            throw std::invalid_argument("Wrong number of arguments");
+    }
+
+    Wrapper(std::shared_ptr<T> obj, Func func, const ArgList& argList):
+        _get_obj([obj = std::move(obj)]() -> T& { return *obj; }),
+        _func(func)
+        , argNames(argList) {
+        if (argList.size() != ARG_COUNT)
+            throw std::invalid_argument("Wrong number of arguments");
+    }
+
+    Wrapper(std::unique_ptr<T> obj, Func func, const ArgList& argList):
+        _get_obj([obj = std::move(obj)]() -> T& { return *obj; }),
+        _func(func),
+        argNames(argList) {
+        if (argList.size() != ARG_COUNT)
+            throw std::invalid_argument("Wrong number of arguments");
+    }
+
+    Wrapper(const Wrapper& other): _get_obj(other._get_obj), _func(other._func),
                                    argNames(other.argNames) {}
 
-    Wrapper(Wrapper&& other) noexcept : _obj(std::move(other._obj)), _func(std::move(other._func)),
+    Wrapper(Wrapper&& other) noexcept : _get_obj(other._get_obj), _func(std::move(other._func)),
                                         argNames(std::move(other.argNames)) {}
 
-    // Copy assignment
     Wrapper& operator=(const Wrapper& other) {
         if (this != &other) {
-            _obj = std::make_unique<T>(*other._obj);
+            _get_obj = other._get_obj;
             _func = other._func;
             argNames = other.argNames;
         }
         return *this;
     }
 
-    // Move assignment
     Wrapper& operator=(Wrapper&& other) noexcept {
         if (this != &other) {
-            _obj = std::move(other._obj);
+            _get_obj = std::move(other._get_obj);
             _func = other._func;
             argNames = std::move(other.argNames);
         }
