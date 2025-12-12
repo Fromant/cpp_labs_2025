@@ -7,6 +7,11 @@
 #include <typeindex>
 #include <unordered_map>
 
+
+using ArgMap = std::unordered_map<std::string, std::any>;
+using ArgList = std::vector<std::pair<std::string, std::any>>;
+
+
 // T is a object type
 // Ret is a function's return type
 // Args is a function's parameters types
@@ -14,18 +19,16 @@ template <typename T, typename Ret, typename... Args>
 class Wrapper {
     static constexpr size_t ARG_COUNT = sizeof...(Args);
 
-    using ArgMap = std::unordered_map<std::string, std::any>;
-    using ArgList = std::vector<std::pair<std::string, std::any>>;
     using Func = Ret (T::*)(Args...);
 
     T* const _obj;
     const Func _func;
 
     const ArgList argNames;
-    std::array<std::type_index, ARG_COUNT> argTypes = { typeid(Args)... };
+    std::array<std::type_index, ARG_COUNT> argTypes = {typeid(Args)...};
 
     template <std::size_t... Indices>
-    Ret call_with_indices(const std::array<std::any, ARG_COUNT>& args, std::index_sequence<Indices...>) {
+    Ret call_with_indices(const std::array<std::any, ARG_COUNT>& args, std::index_sequence<Indices...>) const {
         return (_obj->*_func)(std::any_cast<Args>(args[Indices])...);
     }
 
@@ -37,7 +40,7 @@ public:
         }
     }
 
-    Ret execute(const ArgList& list) {
+    Ret execute(const ArgList& list) const {
         if (list.size() > ARG_COUNT) {
             throw std::invalid_argument("Too many arguments");
         }
