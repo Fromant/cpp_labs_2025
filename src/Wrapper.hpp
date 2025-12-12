@@ -36,7 +36,7 @@ class Wrapper : public WrapperBase {
     template <typename R = Ret, std::size_t... Indices>
     std::enable_if_t<std::is_void_v<R>, std::any>
     invoke_function(const std::array<std::any, ARG_COUNT>& args, std::index_sequence<Indices...>) const {
-        ((*_obj).*_func)(std::any_cast<Args>(args[Indices])...);
+        (*_obj.*_func)(std::any_cast<Args>(args[Indices])...);
         return {}; // or std::any{}
     }
 
