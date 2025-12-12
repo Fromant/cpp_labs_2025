@@ -7,40 +7,66 @@
 #include <typeindex>
 #include <unordered_map>
 
-
-using ArgMap = std::unordered_map<std::string, std::any>;
-using ArgList = std::vector<std::pair<std::string, std::any>>;
+#include "WrapperBase.hpp"
 
 
 // T is a object type
 // Ret is a function's return type
 // Args is a function's parameters types
 template <typename T, typename Ret, typename... Args>
-class Wrapper {
+class Wrapper : public WrapperBase {
     static constexpr size_t ARG_COUNT = sizeof...(Args);
 
+    using ArgMap = std::unordered_map<std::string, std::any>;
     using Func = Ret (T::*)(Args...);
 
-    T* const _obj;
-    const Func _func;
+    std::unique_ptr<T> _obj;
+    Func _func;
 
-    const ArgList argNames;
+    ArgList argNames;
     std::array<std::type_index, ARG_COUNT> argTypes = {typeid(Args)...};
 
     template <std::size_t... Indices>
-    Ret call_with_indices(const std::array<std::any, ARG_COUNT>& args, std::index_sequence<Indices...>) const {
-        return (_obj->*_func)(std::any_cast<Args>(args[Indices])...);
+    std::any call_with_indices(const std::array<std::any, ARG_COUNT>& args, std::index_sequence<Indices...>) const {
+        return (*_obj.*_func)(std::any_cast<Args>(args[Indices])...);
     }
 
 public:
-    Wrapper(T* const object, Func function, const ArgList& argList) :
-        _obj(object), _func(function), argNames(argList) {
+    Wrapper(const T& object, Func function, const ArgList& argList) :
+        _obj(std::make_unique<T>(object)), _func(function), argNames(argList) {
         if (argList.size() != ARG_COUNT) {
             throw std::invalid_argument("Wrong number of arguments");
         }
     }
 
-    Ret execute(const ArgList& list) const {
+    Wrapper(const Wrapper& other): _obj(std::make_unique<T>(*other._obj)), _func(other._func),
+                                   argNames(other.argNames) {}
+
+    Wrapper(Wrapper&& other) noexcept : _obj(std::move(other._obj)), _func(std::move(other._func)),
+                                        argNames(std::move(other.argNames)) {}
+
+    // Copy assignment
+    Wrapper& operator=(const Wrapper& other) {
+        if (this != &other) {
+            _obj = std::make_unique<T>(*other._obj);
+            _func = other._func;
+            argNames = other.argNames;
+        }
+        return *this;
+    }
+
+    // Move assignment
+    Wrapper& operator=(Wrapper&& other) noexcept {
+        if (this != &other) {
+            _obj = std::move(other._obj);
+            _func = other._func;
+            argNames = std::move(other.argNames);
+        }
+        return *this;
+    }
+
+
+    std::any execute(const ArgList& list) const override {
         if (list.size() > ARG_COUNT) {
             throw std::invalid_argument("Too many arguments");
         }
@@ -63,6 +89,12 @@ public:
             }
         }
 
-        return call_with_indices(args, std::make_index_sequence<ARG_COUNT>());
+        // special case for Ret == void
+        if constexpr (std::is_same_v<Ret, void>) {
+            call_with_indices(args, std::make_index_sequence<ARG_COUNT>{});
+            return {};
+        }
+
+        return call_with_indices(args, std::make_index_sequence<ARG_COUNT>{});
     }
 };

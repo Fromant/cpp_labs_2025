@@ -2,32 +2,44 @@
 
 #include <any>
 #include <functional>
+#include <memory>
 #include <stdexcept>
 #include <string>
 #include <unordered_map>
-#include <vector>
 
 #include "Wrapper.hpp"
 
 class Engine {
 public:
     template <typename T, typename Ret, typename... Args>
-    void register_command(const Wrapper<T, Ret, Args...>* wrapper, const std::string& command_name) {
-        auto executor = [wrapper](const ArgList& args) -> std::any {
-            return wrapper->execute(args);
-        };
-        command_executors[command_name] = executor;
+    void register_command(const std::string& name, const Wrapper<T, Ret, Args...>& wrapper) {
+        wrappers.emplace(name, std::make_unique<Wrapper<T, Ret, Args...>>(wrapper));
     }
 
-    std::any execute(const std::string& command_name, const ArgList& args) {
-        auto it = command_executors.find(command_name);
-        if (it == command_executors.end()) {
+    template <typename T, typename Ret, typename... Args, typename... CtorArgs>
+    void register_command(const std::string& name, CtorArgs&&... args) {
+        wrappers.emplace(name, std::make_unique<Wrapper<T, Ret, Args...>>(std::forward<CtorArgs>(args)...));
+    }
+
+    void register_command(const std::string& name, std::unique_ptr<WrapperBase>&& wrapper) {
+        wrappers.emplace(name, std::move(wrapper));
+    }
+
+    template <typename T, typename Ret, typename... Args>
+    void register_command(const std::string& name, Wrapper<T, Ret, Args...>&& wrapper) {
+        wrappers.emplace(name, std::make_unique<Wrapper<T, Ret, Args...>>(std::move(wrapper)));
+    }
+
+
+    std::any execute(const std::string& command_name, const WrapperBase::ArgList& args) {
+        auto it = wrappers.find(command_name);
+        if (it == wrappers.end()) {
             throw std::invalid_argument("Command not found: " + command_name);
         }
 
-        return it->second(args);
+        return it->second->execute(args);
     }
 
 private:
-    std::unordered_map<std::string, std::function<std::any(const ArgList&)>> command_executors;
+    std::unordered_map<std::string, std::unique_ptr<WrapperBase>> wrappers;
 };
