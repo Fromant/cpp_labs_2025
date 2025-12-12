@@ -26,9 +26,18 @@ class Wrapper : public WrapperBase {
     ArgList argNames;
     std::array<std::type_index, ARG_COUNT> argTypes = {typeid(Args)...};
 
-    template <std::size_t... Indices>
-    std::any call_with_indices(const std::array<std::any, ARG_COUNT>& args, std::index_sequence<Indices...>) const {
-        return (*_obj.*_func)(std::any_cast<Args>(args[Indices])...);
+    template <typename R = Ret, std::size_t... Indices>
+    std::enable_if_t<!std::is_void_v<R>, std::any>
+    invoke_function(const std::array<std::any, ARG_COUNT>& args, std::index_sequence<Indices...>) const {
+        return ((*_obj).*_func)(std::any_cast<Args>(args[Indices])...);
+    }
+
+    // Helper for void return
+    template <typename R = Ret, std::size_t... Indices>
+    std::enable_if_t<std::is_void_v<R>, std::any>
+    invoke_function(const std::array<std::any, ARG_COUNT>& args, std::index_sequence<Indices...>) const {
+        ((*_obj).*_func)(std::any_cast<Args>(args[Indices])...);
+        return {}; // or std::any{}
     }
 
 public:
@@ -89,12 +98,6 @@ public:
             }
         }
 
-        // special case for Ret == void
-        if constexpr (std::is_same_v<Ret, void>) {
-            call_with_indices(args, std::make_index_sequence<ARG_COUNT>{});
-            return {};
-        }
-
-        return call_with_indices(args, std::make_index_sequence<ARG_COUNT>{});
+        return invoke_function(args, std::make_index_sequence<ARG_COUNT>{});
     }
 };

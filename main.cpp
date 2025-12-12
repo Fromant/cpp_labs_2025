@@ -1,24 +1,19 @@
 #include <iostream>
 
 #include "Engine.hpp"
-#include "Wrapper.hpp"
+#include "src/Wrapper.hpp"
 
 struct A {
-    int foo(int a, int b) {
-        return b - a;
-    }
+    int f(int a, int b) { return a + b; }
 };
 
 int main() {
-    A a;
-    Wrapper t(a, &A::foo, {{"a", 12}, {"b", 11}});
-    std::cout << std::any_cast<int>(t.execute({
-            {"a", 5}
-        })) << std::endl;
+    A obj;
+    Wrapper w1(obj, &A::f, {{"a",0},{"b",0}});  // non-const member
 
     Engine e;
-    e.register_command("t", t);
-    e.register_command("t", std::move(t));
+    e.register_command("w1", w1);
+    e.register_command("w2", std::move(w1));
 
-    std::cout << std::any_cast<int>(e.execute("t", {{"b", 16}})) << std::endl;
+    std::cout << std::any_cast<int>(e.execute("w1", {{"b", 16}})) << std::endl;
 }

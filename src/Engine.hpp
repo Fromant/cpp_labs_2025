@@ -16,9 +16,14 @@ public:
         wrappers.emplace(name, std::make_unique<Wrapper<T, Ret, Args...>>(wrapper));
     }
 
-    template <typename T, typename Ret, typename... Args, typename... CtorArgs>
-    void register_command(const std::string& name, CtorArgs&&... args) {
-        wrappers.emplace(name, std::make_unique<Wrapper<T, Ret, Args...>>(std::forward<CtorArgs>(args)...));
+    template <typename T, typename Ret, typename... Args>
+    void register_command(
+        const std::string& name,
+        const T& obj,
+        Ret(T::*func)(Args...),
+        const WrapperBase::ArgList& argList
+    ) {
+        wrappers.emplace(name, std::make_unique<Wrapper<T, Ret, Args...>>(obj, func, argList));
     }
 
     void register_command(const std::string& name, std::unique_ptr<WrapperBase>&& wrapper) {
