@@ -1,7 +1,6 @@
 #pragma once
 
 #include <any>
-#include <functional>
 #include <memory>
 #include <stdexcept>
 #include <string>
@@ -20,7 +19,7 @@ public:
     void register_command(
         const std::string& name,
         Obj obj,
-        Ret(T::*func)(Args...),
+        Ret (T::*func)(Args...),
         const WrapperBase::ArgList& argList
     ) {
         wrappers.emplace(name, std::make_unique<Wrapper<T, Ret, Args...>>(obj, func, argList));
