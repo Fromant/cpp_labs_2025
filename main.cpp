@@ -9,7 +9,7 @@ struct A {
 
 int main() {
     A obj;
-    Wrapper w1(obj, &A::f, {{"a",0},{"b",0}});  // non-const member
+    Wrapper w1(obj, &A::f, {{"a",0},{"b",0}});
 
     Engine e;
     e.register_command("w1", w1);
