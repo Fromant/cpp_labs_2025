@@ -67,7 +67,7 @@ public:
     }
 
     Wrapper(std::unique_ptr<T> obj, Func func, const ArgList& argList):
-        _get_obj([obj = std::move(obj)]() -> T& { return *obj; }),
+        _get_obj([obj = std::shared_ptr<T>(std::move(obj))]() -> T& { return *obj; }),
         _func(func),
         argNames(argList) {
         if (argList.size() != ARG_COUNT)
