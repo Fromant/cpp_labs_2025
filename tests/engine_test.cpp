@@ -51,7 +51,6 @@ TEST(EngineTest, RegisterWithCtorArgs) {
     Engine engine;
     Subject subj;
     engine.register_command("double", &subj, &Subject::double_it, WrapperBase::ArgList{{"x", 0}});
-
 }
 
 TEST(EngineTest, MultipleCommands) {
@@ -70,4 +69,43 @@ TEST(EngineTest, MultipleCommands) {
 
     engine.execute("set_last", {{"arg1", 10}, {"arg2", 20}});
     EXPECT_EQ(subj.last_called, 30);
+}
+
+
+TEST(EngineTest, RegisterWithConstRef) {
+    Subject subj;
+    Engine engine;
+    engine.register_command("sum", subj, &Subject::set_sum, {{"arg1", 0}, {"arg2", 1}});
+    auto result = engine.execute("sum", {{"arg1", 42}});
+    EXPECT_FALSE(result.has_value());
+    EXPECT_EQ(subj.last_called, 0); //original object is not changed
+}
+
+TEST(EngineTest, RegisterWithRawPtr) {
+    auto* subj = new Subject();
+    Engine engine;
+    engine.register_command("sum", subj, &Subject::set_sum, {{"arg1", 0}, {"arg2", 1}});
+    auto result = engine.execute("sum", {{"arg1", 42}});
+    EXPECT_FALSE(result.has_value());
+    EXPECT_EQ(subj->last_called, 43); //original object is changed
+}
+
+TEST(EngineTest, RegisterWithUniquePtr) {
+    auto subj = std::make_unique<Subject>();
+    Subject* observer = subj.get();
+
+    Engine engine;
+    engine.register_command("sum", std::move(subj), &Subject::set_sum, {{"arg1", 0}, {"arg2", 1}});
+    auto result = engine.execute("sum", {{"arg1", 42}});
+    EXPECT_FALSE(result.has_value());
+    EXPECT_EQ(observer->last_called, 43); //original object is changed
+}
+
+TEST(EngineTest, RegisterWithSharedPtr) {
+    std::shared_ptr<Subject> subj = std::make_shared<Subject>();
+    Engine engine;
+    engine.register_command("sum", subj, &Subject::set_sum, {{"arg1", 0}, {"arg2", 1}});
+    auto result = engine.execute("sum", {{"arg1", 42}});
+    EXPECT_FALSE(result.has_value());
+    EXPECT_EQ(subj->last_called, 43); //original object is changed
 }

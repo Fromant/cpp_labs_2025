@@ -22,7 +22,7 @@ public:
         Ret (T::*func)(Args...),
         const WrapperBase::ArgList& argList
     ) {
-        wrappers.emplace(name, std::make_unique<Wrapper<T, Ret, Args...>>(obj, func, argList));
+        wrappers.emplace(name, std::make_unique<Wrapper<T, Ret, Args...>>(std::move(obj), func, argList));
     }
 
 
