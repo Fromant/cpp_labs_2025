@@ -130,3 +130,40 @@ TEST(WrapperTest, ExecuteVoidFunctionWithNoReturn) {
     EXPECT_EQ(subj.last_called, 43);
 }
 
+
+TEST(WrapperTest, ConstructWithConstRef) {
+    Subject subj;
+    Wrapper wrapper(subj, &Subject::set_sum, {{"arg1", 0}, {"arg2", 1}}); //copies subj internally
+    auto result = wrapper.execute({{"arg1", 42}});
+    EXPECT_FALSE(result.has_value());
+    EXPECT_EQ(subj.last_called, 0); //original object is not changed
+}
+
+TEST(WrapperTest, ConstructWithRawPtr) {
+    auto* subj = new Subject();
+    Wrapper wrapper(subj, &Subject::set_sum, {{"arg1", 0}, {"arg2", 1}}); //just stores raw ptr
+    auto result = wrapper.execute({{"arg1", 42}});
+    EXPECT_FALSE(result.has_value());
+    EXPECT_EQ(subj->last_called, 43); //original object is changed
+
+    delete subj; //after deleting executing wrapper is UB, likely SEGFAULT
+}
+
+TEST(WrapperTest, ConstructWithUniquePtr) {
+    auto subj = std::make_unique<Subject>();
+    Subject* observer = subj.get();
+
+    Wrapper wrapper(std::move(subj), &Subject::set_sum, {{"arg1", 0}, {"arg2", 1}}); //unique ptrs have to be moved
+
+    auto result = wrapper.execute({{"arg1", 42}});
+    EXPECT_FALSE(result.has_value());
+    EXPECT_EQ(observer->last_called, 43);
+}
+
+TEST(WrapperTest, ConstructWithSharedPtr) {
+    std::shared_ptr<Subject> subj = std::make_shared<Subject>();
+    Wrapper wrapper(subj, &Subject::set_sum, {{"arg1", 0}, {"arg2", 1}}); //copies shared ptr inside. Can be moved tho
+    auto result = wrapper.execute({{"arg1", 42}});
+    EXPECT_FALSE(result.has_value());
+    EXPECT_EQ(subj->last_called, 43); //original object is changed
+}
